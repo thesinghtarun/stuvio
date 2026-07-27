@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:studyvault/core/models/assignment.dart';
+import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/models/workspace.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
 import 'package:studyvault/provider/home_provider.dart';
 import 'package:studyvault/provider/workspace_counter_provider.dart';
+import 'package:studyvault/screens/assignment_detail_screen.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
@@ -67,6 +71,14 @@ class HomeTab extends StatelessWidget {
                   // Upcoming Section
                   const _UpcomingSection(),
 
+                  const SizedBox(height: 24),
+
+                  // Notes Section
+                  const _NotesSection(),
+
+                  // Empty State — shown only when all sections are empty
+                  const _EmptyHomeState(),
+
                   const SizedBox(height: 20),
                 ],
               ),
@@ -107,11 +119,7 @@ class _WorkspaceDropdown extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.work_outline,
-              color: Color(0xFF9CA3AF),
-              size: 20,
-            ),
+            const Icon(Icons.work_outline, color: Color(0xFF9CA3AF), size: 20),
             const SizedBox(width: 10),
             Text(
               'No workspace created',
@@ -268,14 +276,20 @@ class _DeadlinesSection extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: displayed.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: 12),
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, idx) {
                 final assignment = displayed[idx];
                 return _DeadlineCard(
                   assignment: assignment,
-                  onTap: () =>
-                      context.read<HomeProvider>().openPdfForAssignment(assignment),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AssignmentDetailScreen(assignment: assignment),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -447,14 +461,20 @@ class _UpcomingSection extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: displayed.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: 12),
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, idx) {
                 final assignment = displayed[idx];
                 return _UpcomingCard(
                   assignment: assignment,
-                  onTap: () =>
-                      context.read<HomeProvider>().openPdfForAssignment(assignment),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AssignmentDetailScreen(assignment: assignment),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -509,6 +529,230 @@ class _UpcomingCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─── Notes Section ─────────────────────────────────────────────────────────────
+
+class _NotesSection extends StatelessWidget {
+  const _NotesSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<HomeProvider>(
+      builder: (context, home, child) {
+        if (home.isLoadingNotes || home.notes.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final hasMultiple = home.notes.length > 1;
+        final displayed = home.isNotesExpanded
+            ? home.notes
+            : [home.notes.first];
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Notes',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF111827),
+                  ),
+                ),
+                if (hasMultiple)
+                  IconButton(
+                    onPressed: () =>
+                        context.read<HomeProvider>().toggleNotesExpanded(),
+                    icon: Icon(
+                      home.isNotesExpanded
+                          ? Icons.expand_less
+                          : Icons.expand_more,
+                      color: const Color(0xFF111827),
+                      size: 26,
+                    ),
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: displayed.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, idx) {
+                final note = displayed[idx];
+                return _NoteCard(
+                  note: note,
+                  onTap: () async {
+                    if (note.filePath.isNotEmpty) {
+                      const platform = MethodChannel(
+                        'com.singhtarun.stuvio/open_file',
+                      );
+                      try {
+                        await platform.invokeMethod('openFile', {
+                          'filePath': note.filePath,
+                        });
+                      } catch (e) {
+                        Fluttertoast.showToast(msg: 'Could not open file: $e');
+                      }
+                    } else {
+                      Fluttertoast.showToast(msg: 'Note file is not available');
+                    }
+                  },
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _NoteCard extends StatelessWidget {
+  final Note note;
+  final VoidCallback onTap;
+
+  const _NoteCard({required this.note, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6750A4).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.picture_as_pdf_rounded,
+                color: Color(0xFF6750A4),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    note.title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF111827),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    note.type == NoteType.pdf ? 'PDF Document' : 'Note',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: Color(0xFF9CA3AF),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Empty Home State ─────────────────────────────────────────────────────────
+
+class _EmptyHomeState extends StatelessWidget {
+  const _EmptyHomeState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<HomeProvider>(
+      builder: (context, home, child) {
+        final isLoading =
+            home.isLoadingDeadlines ||
+            home.isLoadingUpcoming ||
+            home.isLoadingNotes;
+
+        final isEmpty =
+            home.deadlines.isEmpty &&
+            home.upcoming.isEmpty &&
+            home.notes.isEmpty;
+
+        if (isLoading || !isEmpty) return const SizedBox.shrink();
+
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 24, bottom: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  'assets/images/no_data.png',
+                  height: 300,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  "Nothing here yet!",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF111827),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Add assignments or notes to your subjects\nand they'll show up right here.",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF6B7280),
+                    height: 1.6,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

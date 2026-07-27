@@ -38,23 +38,29 @@ const AssignmentSchema = CollectionSchema(
       type: IsarType.byte,
       enumMap: _AssignmentpriorityEnumValueMap,
     ),
-    r'subjectId': PropertySchema(
+    r'status': PropertySchema(
       id: 4,
+      name: r'status',
+      type: IsarType.byte,
+      enumMap: _AssignmentstatusEnumValueMap,
+    ),
+    r'subjectId': PropertySchema(
+      id: 5,
       name: r'subjectId',
       type: IsarType.long,
     ),
     r'submitted': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'submitted',
       type: IsarType.bool,
     ),
     r'title': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'title',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -121,10 +127,11 @@ void _assignmentSerialize(
   writer.writeString(offsets[1], object.description);
   writer.writeDateTime(offsets[2], object.dueDate);
   writer.writeByte(offsets[3], object.priority.index);
-  writer.writeLong(offsets[4], object.subjectId);
-  writer.writeBool(offsets[5], object.submitted);
-  writer.writeString(offsets[6], object.title);
-  writer.writeDateTime(offsets[7], object.updatedAt);
+  writer.writeByte(offsets[4], object.status.index);
+  writer.writeLong(offsets[5], object.subjectId);
+  writer.writeBool(offsets[6], object.submitted);
+  writer.writeString(offsets[7], object.title);
+  writer.writeDateTime(offsets[8], object.updatedAt);
 }
 
 Assignment _assignmentDeserialize(
@@ -141,10 +148,13 @@ Assignment _assignmentDeserialize(
   object.priority =
       _AssignmentpriorityValueEnumMap[reader.readByteOrNull(offsets[3])] ??
           AssignmentPriority.low;
-  object.subjectId = reader.readLong(offsets[4]);
-  object.submitted = reader.readBool(offsets[5]);
-  object.title = reader.readString(offsets[6]);
-  object.updatedAt = reader.readDateTime(offsets[7]);
+  object.status =
+      _AssignmentstatusValueEnumMap[reader.readByteOrNull(offsets[4])] ??
+          AssignmentStatus.pending;
+  object.subjectId = reader.readLong(offsets[5]);
+  object.submitted = reader.readBool(offsets[6]);
+  object.title = reader.readString(offsets[7]);
+  object.updatedAt = reader.readDateTime(offsets[8]);
   return object;
 }
 
@@ -165,12 +175,15 @@ P _assignmentDeserializeProp<P>(
       return (_AssignmentpriorityValueEnumMap[reader.readByteOrNull(offset)] ??
           AssignmentPriority.low) as P;
     case 4:
-      return (reader.readLong(offset)) as P;
+      return (_AssignmentstatusValueEnumMap[reader.readByteOrNull(offset)] ??
+          AssignmentStatus.pending) as P;
     case 5:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 6:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 7:
+      return (reader.readString(offset)) as P;
+    case 8:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -186,6 +199,16 @@ const _AssignmentpriorityValueEnumMap = {
   0: AssignmentPriority.low,
   1: AssignmentPriority.medium,
   2: AssignmentPriority.high,
+};
+const _AssignmentstatusEnumValueMap = {
+  'pending': 0,
+  'ongoing': 1,
+  'completed': 2,
+};
+const _AssignmentstatusValueEnumMap = {
+  0: AssignmentStatus.pending,
+  1: AssignmentStatus.ongoing,
+  2: AssignmentStatus.completed,
 };
 
 Id _assignmentGetId(Assignment object) {
@@ -773,6 +796,59 @@ extension AssignmentQueryFilter
     });
   }
 
+  QueryBuilder<Assignment, Assignment, QAfterFilterCondition> statusEqualTo(
+      AssignmentStatus value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'status',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterFilterCondition> statusGreaterThan(
+    AssignmentStatus value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'status',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterFilterCondition> statusLessThan(
+    AssignmentStatus value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'status',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterFilterCondition> statusBetween(
+    AssignmentStatus lower,
+    AssignmentStatus upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'status',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<Assignment, Assignment, QAfterFilterCondition> subjectIdEqualTo(
       int value) {
     return QueryBuilder.apply(this, (query) {
@@ -1079,6 +1155,18 @@ extension AssignmentQuerySortBy
     });
   }
 
+  QueryBuilder<Assignment, Assignment, QAfterSortBy> sortByStatus() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'status', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterSortBy> sortByStatusDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'status', Sort.desc);
+    });
+  }
+
   QueryBuilder<Assignment, Assignment, QAfterSortBy> sortBySubjectId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'subjectId', Sort.asc);
@@ -1190,6 +1278,18 @@ extension AssignmentQuerySortThenBy
     });
   }
 
+  QueryBuilder<Assignment, Assignment, QAfterSortBy> thenByStatus() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'status', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterSortBy> thenByStatusDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'status', Sort.desc);
+    });
+  }
+
   QueryBuilder<Assignment, Assignment, QAfterSortBy> thenBySubjectId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'subjectId', Sort.asc);
@@ -1266,6 +1366,12 @@ extension AssignmentQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Assignment, Assignment, QDistinct> distinctByStatus() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'status');
+    });
+  }
+
   QueryBuilder<Assignment, Assignment, QDistinct> distinctBySubjectId() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'subjectId');
@@ -1322,6 +1428,13 @@ extension AssignmentQueryProperty
       priorityProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'priority');
+    });
+  }
+
+  QueryBuilder<Assignment, AssignmentStatus, QQueryOperations>
+      statusProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'status');
     });
   }
 

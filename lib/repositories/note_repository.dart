@@ -1,6 +1,7 @@
 import 'package:isar/isar.dart';
 import 'package:studyvault/core/database/isar_service.dart';
 import 'package:studyvault/core/models/note.dart';
+import 'package:studyvault/core/models/subject.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
 
 class NoteRepository {
@@ -37,44 +38,77 @@ class NoteRepository {
     return list;
   }
 
-  /// Search notes by title.
+  /// Search notes by title or subject name.
   Future<List<Note>> searchNotes({
     required List<int> subjectIds,
     required String query,
     NoteType? type,
-    int limit = 30,
+    int limit = 50,
     int offset = 0,
   }) async {
     if (subjectIds.isEmpty || query.trim().isEmpty) {
       return [];
     }
 
-    final keyword = query.trim();
+    final keyword = query.trim().toLowerCase();
+
+    // 1. Find subject IDs whose name contains keyword
+    final matchingSubjectIds = <int>[];
+    for (final sId in subjectIds) {
+      final subject = await isar.subjects.get(sId);
+      if (subject != null && subject.name.toLowerCase().contains(keyword)) {
+        matchingSubjectIds.add(sId);
+      }
+    }
 
     List<Note> results;
 
-    if (type != null) {
-      results = await isar.notes
+    if (matchingSubjectIds.isNotEmpty) {
+      // Notes under matching subjects OR matching title
+      final notesBySubject = await isar.notes
+          .filter()
+          .anyOf(matchingSubjectIds, (q, id) => q.subjectIdEqualTo(id))
+          .findAll();
+
+      final notesByTitle = await isar.notes
           .filter()
           .anyOf(subjectIds, (q, id) => q.subjectIdEqualTo(id))
           .and()
-          .typeEqualTo(type)
-          .and()
           .titleContains(keyword, caseSensitive: false)
-          .sortByCreatedAtDesc()
-          .offset(offset)
-          .limit(limit)
           .findAll();
+
+      final Map<int, Note> noteMap = {};
+      for (final n in [...notesBySubject, ...notesByTitle]) {
+        if (type == null || n.type == type) {
+          noteMap[n.id] = n;
+        }
+      }
+      results = noteMap.values.toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     } else {
-      results = await isar.notes
-          .filter()
-          .anyOf(subjectIds, (q, id) => q.subjectIdEqualTo(id))
-          .and()
-          .titleContains(keyword, caseSensitive: false)
-          .sortByCreatedAtDesc()
-          .offset(offset)
-          .limit(limit)
-          .findAll();
+      if (type != null) {
+        results = await isar.notes
+            .filter()
+            .anyOf(subjectIds, (q, id) => q.subjectIdEqualTo(id))
+            .and()
+            .typeEqualTo(type)
+            .and()
+            .titleContains(keyword, caseSensitive: false)
+            .sortByCreatedAtDesc()
+            .offset(offset)
+            .limit(limit)
+            .findAll();
+      } else {
+        results = await isar.notes
+            .filter()
+            .anyOf(subjectIds, (q, id) => q.subjectIdEqualTo(id))
+            .and()
+            .titleContains(keyword, caseSensitive: false)
+            .sortByCreatedAtDesc()
+            .offset(offset)
+            .limit(limit)
+            .findAll();
+      }
     }
 
     AppLogger.db(

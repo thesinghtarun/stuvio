@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:studyvault/core/models/assignment.dart';
+import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
 import 'package:studyvault/repositories/assignment_repository.dart';
 import 'package:studyvault/repositories/note_repository.dart';
@@ -19,6 +20,10 @@ class HomeProvider extends ChangeNotifier {
   bool _isLoadingUpcoming = false;
   bool _isUpcomingExpanded = false;
 
+  List<Note> _notes = [];
+  bool _isLoadingNotes = false;
+  bool _isNotesExpanded = false;
+
   // ─── Getters ──────────────────────────────────────────────────────────────
   List<Assignment> get deadlines => _deadlines;
   bool get isLoadingDeadlines => _isLoadingDeadlines;
@@ -27,6 +32,10 @@ class HomeProvider extends ChangeNotifier {
   List<Assignment> get upcoming => _upcoming;
   bool get isLoadingUpcoming => _isLoadingUpcoming;
   bool get isUpcomingExpanded => _isUpcomingExpanded;
+
+  List<Note> get notes => _notes;
+  bool get isLoadingNotes => _isLoadingNotes;
+  bool get isNotesExpanded => _isNotesExpanded;
 
   // ─── Load for workspace ───────────────────────────────────────────────────
 
@@ -38,15 +47,16 @@ class HomeProvider extends ChangeNotifier {
       'HomeProvider',
       'Loading home data for workspaceId=$workspaceId',
     );
-    await Future.wait([_loadDeadlines(workspaceId), _loadUpcoming(workspaceId)]);
+    await _loadDeadlines(workspaceId);
+    await _loadUpcoming(workspaceId);
+    await _loadNotes(workspaceId);
   }
 
-  /// Force-reload even if workspaceId hasn't changed (e.g. after saving new assignment).
+  /// Force-reload even if workspaceId hasn't changed.
   Future<void> reload() async {
-    await Future.wait([
-      _loadDeadlines(_currentWorkspaceId),
-      _loadUpcoming(_currentWorkspaceId),
-    ]);
+    await _loadDeadlines(_currentWorkspaceId);
+    await _loadUpcoming(_currentWorkspaceId);
+    await _loadNotes(_currentWorkspaceId);
   }
 
   // ─── Deadlines (due tomorrow) ─────────────────────────────────────────────
@@ -98,7 +108,7 @@ class HomeProvider extends ChangeNotifier {
     }
   }
 
-  // ─── Upcoming (all pending assignments) ───────────────────────────────────
+  // ─── Upcoming (all pending assignments excluding deadlines) ───────────────
   Future<void> _loadUpcoming(int? workspaceId) async {
     _isLoadingUpcoming = true;
     notifyListeners();
@@ -122,18 +132,66 @@ class HomeProvider extends ChangeNotifier {
       }
 
       final subjectIds = subjects.map((s) => s.id).toList();
-      _upcoming = await AssignmentRepository.instance
+      final allPending = await AssignmentRepository.instance
           .getPendingAssignmentsForSubjects(subjectIds);
+
+      final deadlineIds = _deadlines.map((d) => d.id).toSet();
+      _upcoming = allPending.where((a) => !deadlineIds.contains(a.id)).toList();
 
       AppLogger.info(
         'HomeProvider',
-        'Upcoming loaded: ${_upcoming.length} pending assignments',
+        'Upcoming loaded: ${_upcoming.length} pending assignments (excluding deadlines)',
       );
     } catch (e, st) {
       AppLogger.error('HomeProvider._loadUpcoming', e, st);
       _upcoming = [];
     } finally {
       _isLoadingUpcoming = false;
+      notifyListeners();
+    }
+  }
+
+  // ─── Notes ────────────────────────────────────────────────────────────────
+  Future<void> _loadNotes(int? workspaceId) async {
+    _isLoadingNotes = true;
+    notifyListeners();
+
+    if (workspaceId == null) {
+      _notes = [];
+      _isLoadingNotes = false;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final subjects = await SubjectRepository.instance
+          .getSubjectsForWorkspace(workspaceId);
+
+      if (subjects.isEmpty) {
+        _notes = [];
+        _isLoadingNotes = false;
+        notifyListeners();
+        return;
+      }
+
+      final List<Note> allNotes = [];
+      for (final s in subjects) {
+        final subjectNotes = await NoteRepository.instance.getNotesForSubject(s.id);
+        allNotes.addAll(subjectNotes);
+      }
+
+      allNotes.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      _notes = allNotes;
+
+      AppLogger.info(
+        'HomeProvider',
+        'Notes loaded: ${_notes.length} note(s)',
+      );
+    } catch (e, st) {
+      AppLogger.error('HomeProvider._loadNotes', e, st);
+      _notes = [];
+    } finally {
+      _isLoadingNotes = false;
       notifyListeners();
     }
   }
@@ -148,6 +206,12 @@ class HomeProvider extends ChangeNotifier {
   void toggleUpcomingExpanded() {
     _isUpcomingExpanded = !_isUpcomingExpanded;
     AppLogger.click('HomeProvider', 'Upcoming expanded: $_isUpcomingExpanded');
+    notifyListeners();
+  }
+
+  void toggleNotesExpanded() {
+    _isNotesExpanded = !_isNotesExpanded;
+    AppLogger.click('HomeProvider', 'Notes expanded: $_isNotesExpanded');
     notifyListeners();
   }
 

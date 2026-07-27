@@ -29,7 +29,10 @@ class ShareHandlerService {
   void setSplashActive(bool active) {
     debugPrint('🚀 [SHARE_SERVICE] setSplashActive called with active=$active');
     _splashDone = !active;
-    AppLogger.info('ShareHandlerService', 'Splash active: $active | splashDone: $_splashDone');
+    AppLogger.info(
+      'ShareHandlerService',
+      'Splash active: $active | splashDone: $_splashDone',
+    );
 
     if (_splashDone) {
       _tryPresentDialogOrQueue();
@@ -44,37 +47,50 @@ class ShareHandlerService {
 
     try {
       // 1. Listen for runtime shares while app is in foreground/background
-      _intentDataStreamSubscription = FlutterSharingIntent.instance.getMediaStream().listen(
-        (List<SharedFile> value) {
-          debugPrint('🚀 [SHARE_SERVICE] getMediaStream fired! Raw count: ${value.length}');
-          for (var f in value) {
-            debugPrint('   -> SharedFile path: ${f.value}, type: ${f.type}');
-          }
-          final validPaths = _extractPaths(value);
-          if (validPaths.isNotEmpty) {
-            _onNewFilesReceived(validPaths);
-          }
-        },
-        onError: (err) {
-          debugPrint('❌ [SHARE_SERVICE] Error in getMediaStream: $err');
-          AppLogger.error('ShareHandlerService.getMediaStream', err);
-        },
-      );
+      _intentDataStreamSubscription = FlutterSharingIntent.instance
+          .getMediaStream()
+          .listen(
+            (List<SharedFile> value) {
+              debugPrint(
+                '🚀 [SHARE_SERVICE] getMediaStream fired! Raw count: ${value.length}',
+              );
+              for (var f in value) {
+                debugPrint(
+                  '   -> SharedFile path: ${f.value}, type: ${f.type}',
+                );
+              }
+              final validPaths = _extractPaths(value);
+              if (validPaths.isNotEmpty) {
+                _onNewFilesReceived(validPaths);
+              }
+            },
+            onError: (err) {
+              debugPrint('❌ [SHARE_SERVICE] Error in getMediaStream: $err');
+              AppLogger.error('ShareHandlerService.getMediaStream', err);
+            },
+          );
 
       // 2. Get initial shared files on cold launch
-      FlutterSharingIntent.instance.getInitialSharing().then((List<SharedFile> value) {
-        debugPrint('🚀 [SHARE_SERVICE] getInitialSharing fired! Raw count: ${value.length}');
-        for (var f in value) {
-          debugPrint('   -> Cold SharedFile path: ${f.value}, type: ${f.type}');
-        }
-        final validPaths = _extractPaths(value);
-        if (validPaths.isNotEmpty) {
-          _onNewFilesReceived(validPaths);
-        }
-      }).catchError((err) {
-        debugPrint('❌ [SHARE_SERVICE] Error in getInitialSharing: $err');
-        AppLogger.error('ShareHandlerService.getInitialSharing', err);
-      });
+      FlutterSharingIntent.instance
+          .getInitialSharing()
+          .then((List<SharedFile> value) {
+            debugPrint(
+              '🚀 [SHARE_SERVICE] getInitialSharing fired! Raw count: ${value.length}',
+            );
+            for (var f in value) {
+              debugPrint(
+                '   -> Cold SharedFile path: ${f.value}, type: ${f.type}',
+              );
+            }
+            final validPaths = _extractPaths(value);
+            if (validPaths.isNotEmpty) {
+              _onNewFilesReceived(validPaths);
+            }
+          })
+          .catchError((err) {
+            debugPrint('❌ [SHARE_SERVICE] Error in getInitialSharing: $err');
+            AppLogger.error('ShareHandlerService.getInitialSharing', err);
+          });
     } catch (e, st) {
       debugPrint('❌ [SHARE_SERVICE] Exception in init: $e');
       AppLogger.error('ShareHandlerService.init', e, st);
@@ -90,7 +106,9 @@ class ShareHandlerService {
   }
 
   void _onNewFilesReceived(List<String> paths) {
-    debugPrint('🚀 [SHARE_SERVICE] _onNewFilesReceived: ${paths.length} file(s)');
+    debugPrint(
+      '🚀 [SHARE_SERVICE] _onNewFilesReceived: ${paths.length} file(s)',
+    );
     // Add new paths avoiding duplicates
     for (final p in paths) {
       if (!_pendingFilePaths.contains(p)) {
@@ -101,7 +119,9 @@ class ShareHandlerService {
   }
 
   void _tryPresentDialogOrQueue() {
-    debugPrint('🚀 [SHARE_SERVICE] _tryPresentDialogOrQueue: pending=${_pendingFilePaths.length}, splashDone=$_splashDone');
+    debugPrint(
+      '🚀 [SHARE_SERVICE] _tryPresentDialogOrQueue: pending=${_pendingFilePaths.length}, splashDone=$_splashDone',
+    );
     if (_pendingFilePaths.isEmpty) return;
 
     if (!_splashDone) {
@@ -115,14 +135,20 @@ class ShareHandlerService {
       _pendingFilePaths.clear();
 
       if (pathsToProcess.length == 1) {
-        debugPrint('🚀 [SHARE_SERVICE] Presenting dialog for single file: ${pathsToProcess.first}');
+        debugPrint(
+          '🚀 [SHARE_SERVICE] Presenting dialog for single file: ${pathsToProcess.first}',
+        );
         SaveSharedPdfDialog.show(ctx, pathsToProcess.first);
       } else {
-        debugPrint('🚀 [SHARE_SERVICE] Batch saving ${pathsToProcess.length} files...');
+        debugPrint(
+          '🚀 [SHARE_SERVICE] Batch saving ${pathsToProcess.length} files...',
+        );
         _saveMultipleFilesInstantly(pathsToProcess);
       }
     } else {
-      debugPrint('🚀 [SHARE_SERVICE] Navigator context is null/unmounted. Retrying in 500ms...');
+      debugPrint(
+        '🚀 [SHARE_SERVICE] Navigator context is null/unmounted. Retrying in 500ms...',
+      );
       Future.delayed(const Duration(milliseconds: 500), () {
         _tryPresentDialogOrQueue();
       });
@@ -130,7 +156,9 @@ class ShareHandlerService {
   }
 
   Future<void> _saveMultipleFilesInstantly(List<String> filePaths) async {
-    debugPrint('🚀 [SHARE_SERVICE] _saveMultipleFilesInstantly for ${filePaths.length} files');
+    debugPrint(
+      '🚀 [SHARE_SERVICE] _saveMultipleFilesInstantly for ${filePaths.length} files',
+    );
     try {
       final user = await UserRepository.instance.getUser();
       if (user == null) {
@@ -138,17 +166,23 @@ class ShareHandlerService {
         return;
       }
 
-      final workspaces = await WorkspaceRepository.instance.getWorkspacesForUser(user.id);
+      final workspaces = await WorkspaceRepository.instance
+          .getWorkspacesForUser(user.id);
       if (workspaces.isEmpty) {
         Fluttertoast.showToast(msg: "Please create a workspace first");
         return;
       }
 
       final activeWorkspace = user.currentWorkspaceId != null
-          ? workspaces.firstWhere((w) => w.id == user.currentWorkspaceId, orElse: () => workspaces.first)
+          ? workspaces.firstWhere(
+              (w) => w.id == user.currentWorkspaceId,
+              orElse: () => workspaces.first,
+            )
           : workspaces.first;
 
-      final subjects = await SubjectRepository.instance.getSubjectsForWorkspace(activeWorkspace.id);
+      final subjects = await SubjectRepository.instance.getSubjectsForWorkspace(
+        activeWorkspace.id,
+      );
       if (subjects.isEmpty) {
         Fluttertoast.showToast(msg: "Please create a subject first");
         return;
@@ -156,6 +190,8 @@ class ShareHandlerService {
 
       final targetSubject = subjects.first;
       final appDir = await getApplicationDocumentsDirectory();
+
+      print("Documents Dir: ${appDir.path}");
       final materialsDir = Directory('${appDir.path}/materials');
       if (!await materialsDir.exists()) {
         await materialsDir.create(recursive: true);
@@ -165,8 +201,14 @@ class ShareHandlerService {
       for (final filePath in filePaths) {
         final sourceFile = File(filePath);
         if (await sourceFile.exists()) {
-          final rawFileName = filePath.split(Platform.pathSeparator).last.split('/').last.replaceAll('.pdf', '');
-          final sanitizedFileName = '${DateTime.now().millisecondsSinceEpoch}_${rawFileName.replaceAll(RegExp(r'[^\w.-]'), '_')}.pdf';
+          final rawFileName = filePath
+              .split(Platform.pathSeparator)
+              .last
+              .split('/')
+              .last
+              .replaceAll('.pdf', '');
+          final sanitizedFileName =
+              '${DateTime.now().millisecondsSinceEpoch}_${rawFileName.replaceAll(RegExp(r'[^\w.-]'), '_')}.pdf';
           final destPath = '${materialsDir.path}/$sanitizedFileName';
           final fileSize = await sourceFile.length();
           await sourceFile.copy(destPath);
@@ -182,7 +224,9 @@ class ShareHandlerService {
         }
       }
 
-      debugPrint('🚀 [SHARE_SERVICE] Batch saved $savedCount files to subject: ${targetSubject.name}');
+      debugPrint(
+        '🚀 [SHARE_SERVICE] Batch saved $savedCount files to subject: ${targetSubject.name}',
+      );
       Fluttertoast.showToast(
         msg: "Saved $savedCount file(s) in ${targetSubject.name}",
         toastLength: Toast.LENGTH_LONG,

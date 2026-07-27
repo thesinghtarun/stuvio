@@ -144,10 +144,16 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
       'SaveSharedPdfDialog.DatePicker',
       'Opening calendar date picker',
     );
+    final today = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+    final initialDate = _dueDate.isBefore(today) ? today : _dueDate;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _dueDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      initialDate: initialDate,
+      firstDate: today,
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
@@ -203,6 +209,8 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
       // 1. Copy shared PDF file to app local storage
       final appDir = await getApplicationDocumentsDirectory();
       final materialsDir = Directory('${appDir.path}/materials');
+
+      print("Documents Dir: ${appDir.path}");
       if (!await materialsDir.exists()) {
         await materialsDir.create(recursive: true);
       }

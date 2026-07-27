@@ -11,11 +11,42 @@ import 'package:studyvault/screens/home_screen.dart';
 class WorkspaceScreenProvider extends ChangeNotifier {
   final PageController pageController = PageController();
 
+  /// When true: launched from Profile tab, skip user name field & user save logic
+  bool fromProfile = false;
+
   int currentPage = 0;
 
   void onPageChanged(int index) {
     currentPage = index;
     AppLogger.click('DetailsPage.onPageChanged', 'Switched to page index $index');
+    notifyListeners();
+  }
+
+  /// Reset provider state for fresh use (called before each WorkspaceScreen open)
+  void reset({bool fromProfile = false}) {
+    this.fromProfile = fromProfile;
+    currentPage = 0;
+    nameController.clear();
+    workspaceController.clear();
+    courseController.clear();
+    selectedSemester = -1;
+    selectSubjects.clear();
+    selectedSubjects.clear();
+    showCustomSubjectField = false;
+    subjectController.clear();
+    // Reset subjects list to defaults
+    subjects
+      ..clear()
+      ..addAll([
+        'DBMS',
+        'MERN Stack',
+        'Operating System',
+        'Java',
+        'Computer Networks',
+        'Software Engineering',
+        'Discrete Math',
+      ]);
+    AppLogger.action('WorkspaceScreenProvider', 'Reset. fromProfile=$fromProfile');
     notifyListeners();
   }
 
@@ -108,7 +139,8 @@ class WorkspaceScreenProvider extends ChangeNotifier {
     AppLogger.click('DetailsPage.nextPageButton', 'Triggered on Page $currentPage');
     switch (currentPage) {
       case 0:
-        if (nameController.text.trim().isEmpty) {
+        // Skip name validation when launched from profile (user already exists)
+        if (!fromProfile && nameController.text.trim().isEmpty) {
           Fluttertoast.showToast(msg: "Please enter your name");
           return;
         }
@@ -147,23 +179,31 @@ class WorkspaceScreenProvider extends ChangeNotifier {
           return;
         }
 
-        final userName = nameController.text.trim();
         final workspaceName = workspaceController.text.trim();
 
-        AppLogger.action('ONBOARDING_FINISH', 'Saving User: $userName, Workspace: $workspaceName, Subjects: $selectedSubjects');
+        // Only used for new onboarding flow (not fromProfile)
+        final userNameInput = nameController.text.trim();
 
-        // 1. Save or update user in Isar
+        AppLogger.action(
+          'ONBOARDING_FINISH',
+          'fromProfile=$fromProfile, Workspace: $workspaceName, Subjects: $selectedSubjects',
+        );
+
         var user = await UserRepository.instance.getUser();
-        if (user == null) {
-          await UserRepository.instance.createUser(userName);
-          user = await UserRepository.instance.getUser();
-        } else {
-          user.name = userName;
-          await UserRepository.instance.updateUser(user);
+
+        if (!fromProfile) {
+          // Onboarding: create or update user
+          if (user == null) {
+            await UserRepository.instance.createUser(userNameInput);
+            user = await UserRepository.instance.getUser();
+          } else {
+            user.name = userNameInput;
+            await UserRepository.instance.updateUser(user);
+          }
         }
 
         if (user != null) {
-          // 2. Save workspace for user in Isar
+          // Save workspace for user in Isar
           final workspace = await WorkspaceRepository.instance.createWorkspace(
             userId: user.id,
             name: workspaceName,
@@ -172,7 +212,7 @@ class WorkspaceScreenProvider extends ChangeNotifier {
           // Update active workspace link in user
           await UserRepository.instance.updateCurrentWorkspace(workspace.id);
 
-          // 3. Save subjects under workspace in Isar
+          // Save subjects under workspace in Isar
           for (final subjectName in selectedSubjects) {
             await SubjectRepository.instance.createSubject(
               workspaceId: workspace.id,
@@ -183,11 +223,16 @@ class WorkspaceScreenProvider extends ChangeNotifier {
 
         await workspaceProvider.refresh();
         if (!context.mounted) return;
-        AppLogger.nav('DetailsScreen', 'HomeScreen');
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) =>  HomeScreen()),
-        );
+        if (fromProfile) {
+          AppLogger.nav('DetailsScreen', 'Back to Profile (fromProfile=true)');
+          Navigator.pop(context);
+        } else {
+          AppLogger.nav('DetailsScreen', 'HomeScreen');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => HomeScreen()),
+          );
+        }
         break;
     }
   }

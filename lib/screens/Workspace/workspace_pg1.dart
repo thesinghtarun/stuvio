@@ -11,55 +11,58 @@ class WorkspacePg1 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     double height = MediaQuery.of(context).size.height;
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(pg1dt1, style: AppStyle.onboardingHeading),
-          Text(pg1dt2, style: AppStyle.onboardingHeading),
-          SizedBox(height: height * .08),
-          Text(
-            "Name",
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 5),
-          Consumer<WorkspaceScreenProvider>(
-            builder: (context, provider, child) {
-              return TextField(
-                controller: provider.nameController,
-                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
-                decoration: InputDecoration(
-                  contentPadding: EdgeInsets.all(20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  hintText: "First Name",
-                  hintStyle: GoogleFonts.plusJakartaSans(
+    return Consumer<WorkspaceScreenProvider>(
+      builder: (context, provider, child) {
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(pg1dt1, style: AppStyle.onboardingHeading),
+              Text(pg1dt2, style: AppStyle.onboardingHeading),
+              SizedBox(height: height * .08),
+
+              // ─── Name field: hidden when creating workspace from profile ───
+              if (!provider.fromProfile) ...[
+                Text(
+                  "Name",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              );
-            },
-          ),
-          SizedBox(height: 15),
-          Text(
-            "Workspace Name",
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 5),
-          Consumer<WorkspaceScreenProvider>(
-            builder: (context, provider, child) {
-              return TextField(
+                const SizedBox(height: 5),
+                TextField(
+                  controller: provider.nameController,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    hintText: "First Name",
+                    hintStyle: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
+              ],
+
+              Text(
+                "Workspace Name",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 5),
+              TextField(
                 controller: provider.workspaceController,
                 style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
                 decoration: InputDecoration(
-                  contentPadding: EdgeInsets.all(20),
+                  contentPadding: const EdgeInsets.all(20),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(5),
                   ),
@@ -68,25 +71,21 @@ class WorkspacePg1 extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              );
-            },
-          ),
-          SizedBox(height: 15),
-          Text(
-            "Course",
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 5),
-          Consumer<WorkspaceScreenProvider>(
-            builder: (context, provider, child) {
-              return TextField(
+              ),
+              const SizedBox(height: 15),
+              Text(
+                "Course",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 5),
+              TextField(
                 controller: provider.courseController,
                 style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
                 decoration: InputDecoration(
-                  contentPadding: EdgeInsets.all(20),
+                  contentPadding: const EdgeInsets.all(20),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(5),
                   ),
@@ -95,11 +94,11 @@ class WorkspacePg1 extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              );
-            },
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

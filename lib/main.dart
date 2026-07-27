@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:studyvault/core/database/isar_service.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
 import 'package:studyvault/provider/bottom_navigation_provider.dart';
+import 'package:studyvault/provider/profile_provider.dart';
 import 'package:studyvault/provider/search_provider.dart';
 import 'package:studyvault/provider/subject_provider.dart';
 import 'package:studyvault/provider/workspace_screen_provider.dart';
@@ -51,6 +52,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider(create: (context) => HomeProvider()),
         ChangeNotifierProvider(create: (context) => SubjectProvider()),
         ChangeNotifierProvider(create: (context) => SearchProvider()),
+        ChangeNotifierProvider(create: (context) => ProfileProvider()),
       ],
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,

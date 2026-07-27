@@ -1,8 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:studyvault/core/models/note.dart';
+import 'package:studyvault/core/utils/app_logger.dart';
 import 'package:studyvault/provider/search_provider.dart';
 import 'package:studyvault/provider/workspace_counter_provider.dart';
+import 'package:studyvault/repositories/note_repository.dart';
 
 class SearchTab extends StatefulWidget {
   const SearchTab({super.key});
@@ -12,75 +18,120 @@ class SearchTab extends StatefulWidget {
 }
 
 class _SearchTabState extends State<SearchTab> {
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    final workspaceId = context
-        .read<WorkspaceCounterProvider>()
-        .selectedWorkspace
-        ?.id;
-
-    context.read<SearchProvider>().loadForWorkspace(workspaceId);
-  }
+  int? _lastWorkspaceId;
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SearchProvider>(
-      builder: (context, provider, child) {
-        final searching = provider.searchController.text.trim().isNotEmpty;
+    return Consumer<WorkspaceCounterProvider>(
+      builder: (context, workspaceProvider, child) {
+        final workspaceId = workspaceProvider.selectedWorkspace?.id;
 
-        return Scaffold(
-          body: SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
+        if (_lastWorkspaceId != workspaceId) {
+          _lastWorkspaceId = workspaceId;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.read<SearchProvider>().loadForWorkspace(workspaceId);
+          });
+        }
 
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: TextField(
-                    controller: provider.searchController,
-                    onChanged: provider.onSearchChanged,
-                    decoration: InputDecoration(
-                      hintText: "Search notes, PDFs, PYQs...",
-                      prefixIcon: const Icon(Icons.search),
+        return Consumer<SearchProvider>(
+          builder: (context, provider, child) {
+            final isSearchingMode =
+                provider.searchController.text.trim().isNotEmpty ||
+                provider.selectedFilter != SearchFilter.all;
 
-                      suffixIcon: provider.searchController.text.isNotEmpty
-                          ? IconButton(
-                              onPressed: () {
-                                provider.searchController.clear();
-                                provider.onSearchChanged("");
-                              },
-                              icon: const Icon(Icons.close),
-                            )
-                          : null,
+            return Scaffold(
+              backgroundColor: const Color(0xFFF9FAFB),
+              body: SafeArea(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 16),
 
-                      filled: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: BorderSide.none,
+                    // Search Input Header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: provider.searchController,
+                          onChanged: provider.onSearchChanged,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF111827),
+                          ),
+                          decoration: InputDecoration(
+                            hintText: "Search notes, PDFs, PYQs...",
+                            hintStyle: GoogleFonts.plusJakartaSans(
+                              color: const Color(0xFF9CA3AF),
+                              fontSize: 14,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search_rounded,
+                              color: Color(0xFF6750A4),
+                            ),
+                            suffixIcon:
+                                provider.searchController.text.isNotEmpty ||
+                                    provider.selectedFilter != SearchFilter.all
+                                ? IconButton(
+                                    onPressed: () {
+                                      AppLogger.click(
+                                        'SearchTab',
+                                        'Cleared search query and filters',
+                                      );
+                                      provider.searchController.clear();
+                                      provider.changeFilter(SearchFilter.all);
+                                    },
+                                    icon: const Icon(
+                                      Icons.close_rounded,
+                                      color: Color(0xFF6B7280),
+                                    ),
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
 
-                const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                Expanded(
-                  child: searching
-                      ? _SearchResultView()
-                      : _SearchSuggestionView(),
+                    // Main View Body
+                    Expanded(
+                      child: isSearchingMode
+                          ? const _SearchResultView()
+                          : const _SearchSuggestionView(),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
   }
 }
 
+// ─── Search Suggestions View ──────────────────────────────────────────────────
+
 class _SearchSuggestionView extends StatelessWidget {
+  const _SearchSuggestionView();
+
   @override
   Widget build(BuildContext context) {
     return Consumer<SearchProvider>(
@@ -90,136 +141,187 @@ class _SearchSuggestionView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// ---------------- Recent Searches ----------------
+              // Recent Searches
               if (provider.recentSearches.isNotEmpty) ...[
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       "Recent Searches",
-                      style: TextStyle(
-                        fontSize: 18,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
+                        color: const Color(0xFF111827),
                       ),
                     ),
-                    const Spacer(),
                     TextButton(
                       onPressed: provider.clearRecentSearches,
-                      child: const Text("Clear"),
+                      child: Text(
+                        "Clear",
+                        style: GoogleFonts.plusJakartaSans(
+                          color: const Color(0xFFEF4444),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 12),
-
+                const SizedBox(height: 10),
                 Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: provider.recentSearches.map((text) {
                     return ActionChip(
-                      avatar: const Icon(Icons.history, size: 18),
-                      label: Text(text),
+                      elevation: 0,
+                      backgroundColor: Colors.white,
+                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      avatar: const Icon(
+                        Icons.history_rounded,
+                        size: 16,
+                        color: Color(0xFF6750A4),
+                      ),
+                      label: Text(
+                        text,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF374151),
+                        ),
+                      ),
                       onPressed: () {
+                        AppLogger.click(
+                          'SearchTab.RecentSearch',
+                          'Selected "$text"',
+                        );
                         provider.searchController.text = text;
-                        provider.onSearchChanged(text);
+                        provider.search(text);
                       },
                     );
                   }).toList(),
                 ),
-
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
               ],
 
-              /// ---------------- Subjects ----------------
-              const Text(
-                "Subjects",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-
-              const SizedBox(height: 14),
-
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: provider.suggestions.map((subject) {
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () {
-                      provider.searchController.text = subject;
-                      provider.onSearchChanged(subject);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 14,
+              // Subjects Suggestions
+              if (provider.suggestions.isNotEmpty) ...[
+                Text(
+                  "Subjects",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 17,
+                    color: const Color(0xFF111827),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: provider.suggestions.map((subject) {
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () {
+                        AppLogger.click(
+                          'SearchTab.SubjectSuggestion',
+                          'Selected "$subject"',
+                        );
+                        provider.searchController.text = subject;
+                        provider.search(subject);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          color: Colors.white,
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircleAvatar(
+                              radius: 13,
+                              backgroundColor: const Color(
+                                0xFF6750A4,
+                              ).withValues(alpha: 0.1),
+                              child: Text(
+                                subject[0].toUpperCase(),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF6750A4),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              subject,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: const Color(0xFF111827),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircleAvatar(
-                            radius: 16,
-                            child: Text(subject[0].toUpperCase()),
-                          ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+              ],
 
-                          const SizedBox(width: 10),
-
-                          Text(
-                            subject,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-
-              const SizedBox(height: 32),
-
-              /// ---------------- Quick Filters ----------------
-              const Text(
+              // Quick Filters
+              Text(
                 "Quick Filters",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17,
+                  color: const Color(0xFF111827),
+                ),
               ),
-
-              const SizedBox(height: 14),
-
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
+              const SizedBox(height: 12),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 2.2,
+                children: const [
                   _QuickFilterCard(
                     icon: Icons.menu_book_rounded,
                     title: "Notes",
                     filter: SearchFilter.notes,
+                    color: Color(0xFF3B82F6),
                   ),
-
                   _QuickFilterCard(
                     icon: Icons.assignment_rounded,
                     title: "Assignments",
                     filter: SearchFilter.assignments,
+                    color: Color(0xFF10B981),
                   ),
-
                   _QuickFilterCard(
-                    icon: Icons.quiz_outlined,
+                    icon: Icons.quiz_rounded,
                     title: "PYQs",
                     filter: SearchFilter.pyqs,
+                    color: Color(0xFFF59E0B),
                   ),
-
                   _QuickFilterCard(
-                    icon: Icons.science_outlined,
+                    icon: Icons.science_rounded,
                     title: "Labs",
                     filter: SearchFilter.labs,
+                    color: Color(0xFF8B5CF6),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
             ],
           ),
         );
@@ -232,41 +334,54 @@ class _QuickFilterCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final SearchFilter filter;
+  final Color color;
 
   const _QuickFilterCard({
     required this.icon,
     required this.title,
     required this.filter,
+    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return Consumer<SearchProvider>(
-      builder: (_, provider, __) {
+      builder: (context, provider, child) {
+        final isSelected = provider.selectedFilter == filter;
+
         return InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           onTap: () {
             provider.changeFilter(filter);
           },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            width: 150,
-            padding: const EdgeInsets.all(18),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              color: provider.selectedFilter == filter
-                  ? Theme.of(context).colorScheme.primaryContainer
-                  : Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(16),
+              color: isSelected ? color.withValues(alpha: 0.12) : Colors.white,
+              border: Border.all(
+                color: isSelected ? color : const Color(0xFFE5E7EB),
+                width: isSelected ? 1.8 : 1.0,
+              ),
             ),
-            child: Column(
+            child: Row(
               children: [
-                Icon(icon, size: 32),
-
-                const SizedBox(height: 12),
-
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 20, color: color),
+                ),
+                const SizedBox(width: 12),
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    fontSize: 14,
+                    color: isSelected ? color : const Color(0xFF111827),
+                  ),
                 ),
               ],
             ),
@@ -277,56 +392,80 @@ class _QuickFilterCard extends StatelessWidget {
   }
 }
 
+// ─── Search Results View ──────────────────────────────────────────────────────
+
 class _SearchResultView extends StatelessWidget {
+  const _SearchResultView();
+
   @override
   Widget build(BuildContext context) {
     return Consumer<SearchProvider>(
       builder: (context, provider, child) {
-        if (provider.isSearching && provider.results.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+        if (provider.isSearching) {
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFF6750A4)),
+          );
         }
 
         if (provider.results.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.search_off_rounded, size: 70, color: Colors.grey),
-                SizedBox(height: 16),
-                Text(
-                  "No files found",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  "Try searching with another keyword.",
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ],
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF3F4F6),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.search_off_rounded,
+                      size: 48,
+                      color: Color(0xFF9CA3AF),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "No files found",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF111827),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "Try searching with another keyword or clearing category filters.",
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFF6B7280),
+                      fontSize: 13,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           );
         }
 
         return Column(
           children: [
-            // ---------------- Filter Chips ----------------
+            // Filter Chips Bar
             SizedBox(
-              height: 52,
+              height: 44,
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 scrollDirection: Axis.horizontal,
-                children: [
+                children: const [
                   _FilterChipWidget(label: "All", filter: SearchFilter.all),
-
                   _FilterChipWidget(label: "Notes", filter: SearchFilter.notes),
-
                   _FilterChipWidget(
                     label: "Assignments",
                     filter: SearchFilter.assignments,
                   ),
-
                   _FilterChipWidget(label: "PYQs", filter: SearchFilter.pyqs),
-
                   _FilterChipWidget(label: "Labs", filter: SearchFilter.labs),
                 ],
               ),
@@ -334,6 +473,7 @@ class _SearchResultView extends StatelessWidget {
 
             const SizedBox(height: 8),
 
+            // Results List
             Expanded(
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(
@@ -341,14 +481,15 @@ class _SearchResultView extends StatelessWidget {
                   vertical: 10,
                 ),
                 itemCount: provider.results.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (_, index) {
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 10),
+                itemBuilder: (context, index) {
                   final note = provider.results[index];
                   final subject = provider.getSubject(note.subjectId);
 
                   return _SearchResultCard(
                     note: note,
-                    subjectName: subject?.name ?? "",
+                    subjectName: subject?.name ?? "Subject",
                   );
                 },
               ),
@@ -369,14 +510,28 @@ class _FilterChipWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<SearchProvider>(
-      builder: (_, provider, _) {
+      builder: (context, provider, child) {
         final selected = provider.selectedFilter == filter;
 
         return Padding(
-          padding: const EdgeInsets.only(right: 10),
+          padding: const EdgeInsets.only(right: 8),
           child: ChoiceChip(
-            label: Text(label),
+            label: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                color: selected ? Colors.white : const Color(0xFF374151),
+              ),
+            ),
             selected: selected,
+            selectedColor: const Color(0xFF6750A4),
+            backgroundColor: Colors.white,
+            side: BorderSide(
+              color: selected
+                  ? const Color(0xFF6750A4)
+                  : const Color(0xFFE5E7EB),
+            ),
             onSelected: (_) {
               provider.changeFilter(filter);
             },
@@ -396,39 +551,201 @@ class _SearchResultCard extends StatelessWidget {
   IconData _icon() {
     switch (note.type) {
       case NoteType.note:
-        return Icons.menu_book;
-
+        return Icons.menu_book_rounded;
       case NoteType.pdf:
-        return Icons.assignment;
-
+        return Icons.picture_as_pdf_rounded;
       case NoteType.pyq:
-        return Icons.quiz;
-
+        return Icons.quiz_rounded;
       case NoteType.lab:
-        return Icons.science;
+        return Icons.science_rounded;
     }
+  }
+
+  Color _iconColor() {
+    switch (note.type) {
+      case NoteType.note:
+        return const Color(0xFF3B82F6);
+      case NoteType.pdf:
+        return const Color(0xFFEF4444);
+      case NoteType.pyq:
+        return const Color(0xFFF59E0B);
+      case NoteType.lab:
+        return const Color(0xFF8B5CF6);
+    }
+  }
+
+  Future<void> _handleNoteTap(BuildContext context) async {
+    AppLogger.click(
+      'SearchTab.SearchResultCard',
+      'Tapped search result note ID=${note.id}: "${note.title}"',
+    );
+
+    // Update last opened in database
+    await NoteRepository.instance.updateLastOpened(note.id);
+
+    // If there is a file path, try to open it via the native viewer
+    if (note.filePath.isNotEmpty) {
+      final file = File(note.filePath);
+      print("FileOPEN: $file");
+      print("Exists: ${await file.exists()}");
+      print("Length: ${await file.length()}");
+      if (await file.exists()) {
+        const platform = MethodChannel('com.singhtarun.stuvio/open_file');
+        try {
+          final result = await platform.invokeMethod('openFile', {
+            'filePath': note.filePath,
+          });
+          AppLogger.action(
+            'OPEN_FILE',
+            'openFile result: $result for ${note.filePath}',
+          );
+          return;
+        } catch (e, st) {
+          AppLogger.error('SearchTab.openFile', e, st);
+          Fluttertoast.showToast(msg: 'Could not open file: $e');
+          return;
+        }
+      } else {
+        AppLogger.info('SearchTab', 'File not found on disk: ${note.filePath}');
+        Fluttertoast.showToast(msg: 'File not found on device');
+        return;
+      }
+    }
+
+    // No file path — show note details sheet (text notes)
+    if (context.mounted) {
+      _showNoteDetailsSheet(context);
+    }
+  }
+
+  void _showNoteDetailsSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _iconColor().withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(_icon(), color: _iconColor(), size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          note.title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF111827),
+                          ),
+                        ),
+                        Text(
+                          subjectName,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            color: const Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              if (note.content != null && note.content!.isNotEmpty) ...[
+                Text(
+                  "Note Content:",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: const Color(0xFF374151),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: Text(
+                    note.content!,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: const Color(0xFF111827),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+              Text(
+                "Created: ${note.createdAt.day.toString().padLeft(2, '0')}/${note.createdAt.month.toString().padLeft(2, '0')}/${note.createdAt.year}",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: const Color(0xFF9CA3AF),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(18),
+    final formattedSize = note.fileSize > 0
+        ? "${(note.fileSize / 1024).toStringAsFixed(1)} KB"
+        : "Text Note";
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () {
-          // TODO:
-          // open pdf
-          // update last opened
-        },
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _handleNoteTap(context),
         child: Padding(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              CircleAvatar(radius: 28, child: Icon(_icon(), size: 28)),
-
-              const SizedBox(width: 16),
-
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _iconColor().withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(_icon(), size: 22, color: _iconColor()),
+              ),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,57 +754,63 @@ class _SearchResultCard extends StatelessWidget {
                       note.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 15,
+                        color: const Color(0xFF111827),
                       ),
                     ),
-
-                    const SizedBox(height: 6),
-
+                    const SizedBox(height: 3),
                     Text(
                       subjectName,
-                      style: TextStyle(color: Colors.grey.shade600),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF6B7280),
+                      ),
                     ),
-
                     const SizedBox(height: 6),
-
                     Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.storage_rounded,
-                          size: 15,
-                          color: Colors.grey.shade600,
+                          size: 13,
+                          color: Color(0xFF9CA3AF),
                         ),
-
                         const SizedBox(width: 4),
-
                         Text(
-                          "${(note.fileSize / 1024).toStringAsFixed(1)} KB",
-                          style: TextStyle(color: Colors.grey.shade600),
+                          formattedSize,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF9CA3AF),
+                          ),
                         ),
-
                         const SizedBox(width: 14),
-
-                        Icon(
-                          Icons.schedule,
-                          size: 15,
-                          color: Colors.grey.shade600,
+                        const Icon(
+                          Icons.schedule_rounded,
+                          size: 13,
+                          color: Color(0xFF9CA3AF),
                         ),
-
                         const SizedBox(width: 4),
-
                         Text(
-                          "${note.createdAt.day}/${note.createdAt.month}/${note.createdAt.year}",
-                          style: TextStyle(color: Colors.grey.shade600),
+                          "${note.createdAt.day.toString().padLeft(2, '0')}/${note.createdAt.month.toString().padLeft(2, '0')}/${note.createdAt.year}",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF9CA3AF),
+                          ),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-
-              const Icon(Icons.chevron_right),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: Color(0xFF9CA3AF),
+              ),
             ],
           ),
         ),

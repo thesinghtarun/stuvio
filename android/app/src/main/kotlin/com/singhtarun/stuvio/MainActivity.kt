@@ -35,8 +35,12 @@ class MainActivity : FlutterActivity() {
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }
-                            startActivity(intent)
-                            result.success(true)
+                            if (intent.resolveActivity(packageManager) != null) {
+    startActivity(intent)
+    result.success(true)
+} else {
+    result.error("NO_APP", "No application found to open PDF", null)
+}
                         } else {
                             result.error("FILE_NOT_FOUND", "File does not exist at path: $filePath", null)
                         }

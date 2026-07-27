@@ -8,6 +8,12 @@ enum AssignmentPriority {
   high,
 }
 
+enum AssignmentStatus {
+  pending,
+  ongoing,
+  completed,
+}
+
 @collection
 class Assignment {
   Id id = Isar.autoIncrement;
@@ -24,6 +30,9 @@ class Assignment {
 
   @enumerated
   AssignmentPriority priority = AssignmentPriority.medium;
+
+  @enumerated
+  AssignmentStatus status = AssignmentStatus.pending;
 
   bool submitted = false;
 
