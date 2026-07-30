@@ -2,6 +2,7 @@ package com.singhtarun.stuvio
 
 import android.content.Intent
 import android.net.Uri
+import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -30,17 +31,40 @@ class MainActivity : FlutterActivity() {
                                 "${applicationContext.packageName}.fileprovider",
                                 file
                             )
+
+                            // Detect MIME type from extension, fallback to application/pdf
+                            val extension = MimeTypeMap.getFileExtensionFromUrl(filePath)
+                            val mimeType = if (extension != null) {
+                                MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.lowercase())
+                                    ?: "application/pdf"
+                            } else {
+                                "application/pdf"
+                            }
+
                             val intent = Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(uri, "application/pdf")
+                                setDataAndType(uri, mimeType)
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }
-                            if (intent.resolveActivity(packageManager) != null) {
-    startActivity(intent)
-    result.success(true)
-} else {
-    result.error("NO_APP", "No application found to open PDF", null)
-}
+
+                            // Try to start the activity directly; catch ActivityNotFoundException
+                            try {
+                                startActivity(intent)
+                                result.success(true)
+                            } catch (e: android.content.ActivityNotFoundException) {
+                                // Fallback: try with generic binary type
+                                try {
+                                    val fallbackIntent = Intent(Intent.ACTION_VIEW).apply {
+                                        setDataAndType(uri, "*/*")
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    startActivity(fallbackIntent)
+                                    result.success(true)
+                                } catch (e2: android.content.ActivityNotFoundException) {
+                                    result.error("NO_APP", "No application found to open this file type", null)
+                                }
+                            }
                         } else {
                             result.error("FILE_NOT_FOUND", "File does not exist at path: $filePath", null)
                         }

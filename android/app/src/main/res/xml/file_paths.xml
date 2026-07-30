@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="external_files" path="." />
-    <files-path name="files" path="." />
-    <cache-path name="cache" path="." />
+    <!--
+        root-path covers the entire filesystem, which is required because
+        Flutter's getApplicationDocumentsDirectory() returns
+        /data/data/{package}/app_flutter/ — a path not reachable via
+        <files-path> (which only covers /data/data/{package}/files/).
+        Using root-path is safe here since we only open files we explicitly stored.
+    -->
+    <root-path name="root" path="/" />
 </paths>

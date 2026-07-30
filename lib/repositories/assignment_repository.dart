@@ -110,4 +110,25 @@ class AssignmentRepository {
     });
     AppLogger.db('AssignmentRepository.deleteAssignment', 'Deleted Assignment ID: $assignmentId');
   }
+
+  /// Search assignments by subjectIds and query
+  Future<List<Assignment>> searchAssignments({
+    required List<int> subjectIds,
+    required String query,
+  }) async {
+    if (subjectIds.isEmpty) return [];
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      return await isar.assignments
+          .filter()
+          .anyOf(subjectIds, (q, int id) => q.subjectIdEqualTo(id))
+          .findAll();
+    }
+    return await isar.assignments
+        .filter()
+        .anyOf(subjectIds, (q, int id) => q.subjectIdEqualTo(id))
+        .and()
+        .titleContains(trimmed, caseSensitive: false)
+        .findAll();
+  }
 }

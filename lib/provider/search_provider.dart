@@ -1,12 +1,29 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:studyvault/core/models/assignment.dart';
 import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/models/subject.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
+import 'package:studyvault/repositories/assignment_repository.dart';
 import 'package:studyvault/repositories/note_repository.dart';
 import 'package:studyvault/repositories/subject_repository.dart';
 
 enum SearchFilter { all, notes, assignments, pyqs, labs }
+
+class SearchResultItem {
+  final Note? note;
+  final Assignment? assignment;
+
+  SearchResultItem.fromNote(this.note) : assignment = null;
+  SearchResultItem.fromAssignment(this.assignment) : note = null;
+
+  bool get isAssignment => assignment != null;
+  bool get isNote => note != null;
+
+  int get subjectId => note?.subjectId ?? assignment!.subjectId;
+  String get title => note?.title ?? assignment!.title;
+  DateTime get date => note?.createdAt ?? assignment!.createdAt;
+}
 
 class SearchProvider extends ChangeNotifier {
   final TextEditingController searchController = TextEditingController();
@@ -22,8 +39,8 @@ class SearchProvider extends ChangeNotifier {
   List<String> _suggestions = [];
   final List<String> _recentSearches = [];
 
-  List<Note> _results = [];
-  List<Note> _allResults = [];
+  List<SearchResultItem> _results = [];
+  List<SearchResultItem> _allResults = [];
 
   //================== Getters ==================
 
@@ -31,7 +48,7 @@ class SearchProvider extends ChangeNotifier {
   SearchFilter get selectedFilter => _selectedFilter;
   List<String> get suggestions => _suggestions;
   List<String> get recentSearches => _recentSearches;
-  List<Note> get results => _results;
+  List<SearchResultItem> get results => _results;
 
   Subject? getSubject(int id) => _subjectMap[id];
 
@@ -121,6 +138,8 @@ class SearchProvider extends ChangeNotifier {
         return;
       }
 
+      final List<SearchResultItem> items = [];
+
       if (trimmedQuery.isNotEmpty) {
         addRecentSearch(trimmedQuery);
         AppLogger.action(
@@ -128,23 +147,40 @@ class SearchProvider extends ChangeNotifier {
           'Searching for "$trimmedQuery" across ${ids.length} subjects',
         );
 
-        _allResults = await NoteRepository.instance.searchNotes(
+        final notes = await NoteRepository.instance.searchNotes(
           subjectIds: ids,
           query: trimmedQuery,
         );
+        for (final n in notes) {
+          items.add(SearchResultItem.fromNote(n));
+        }
+
+        final assignments = await AssignmentRepository.instance
+            .searchAssignments(subjectIds: ids, query: trimmedQuery);
+        for (final a in assignments) {
+          items.add(SearchResultItem.fromAssignment(a));
+        }
       } else {
-        // Query empty but category filter selected: load all notes for workspace subjects
+        // Query empty but category filter selected: load all items for workspace subjects
         AppLogger.action(
           'SearchProvider',
-          'Loading all notes for filter: ${_selectedFilter.name}',
+          'Loading all items for filter: ${_selectedFilter.name}',
         );
-        final List<Note> allWorkspaceNotes = [];
         for (final id in ids) {
           final notes = await NoteRepository.instance.getNotesForSubject(id);
-          allWorkspaceNotes.addAll(notes);
+          for (final n in notes) {
+            items.add(SearchResultItem.fromNote(n));
+          }
+          final assignments = await AssignmentRepository.instance
+              .getAssignmentsForSubject(id);
+          for (final a in assignments) {
+            items.add(SearchResultItem.fromAssignment(a));
+          }
         }
-        _allResults = allWorkspaceNotes;
       }
+
+      items.sort((a, b) => b.date.compareTo(a.date));
+      _allResults = items;
 
       _applyFilter();
 
@@ -187,24 +223,28 @@ class SearchProvider extends ChangeNotifier {
         _results = List.from(_allResults);
         break;
       case SearchFilter.notes:
-        _results = _allResults.where((e) => e.type == NoteType.note).toList();
+        _results = _allResults
+            .where((e) => e.isNote && e.note!.type == NoteType.note)
+            .toList();
         break;
       case SearchFilter.assignments:
         _results = _allResults
             .where(
               (e) =>
-                  e.type == NoteType.pdf ||
-                  e.title.toLowerCase().contains('assignment') ||
-                  e.title.toLowerCase().contains('hw') ||
-                  e.title.toLowerCase().contains('task'),
+                  e.isAssignment ||
+                  (e.isNote && e.note!.type == NoteType.assignment),
             )
             .toList();
         break;
       case SearchFilter.pyqs:
-        _results = _allResults.where((e) => e.type == NoteType.pyq).toList();
+        _results = _allResults
+            .where((e) => e.isNote && e.note!.type == NoteType.pyq)
+            .toList();
         break;
       case SearchFilter.labs:
-        _results = _allResults.where((e) => e.type == NoteType.lab).toList();
+        _results = _allResults
+            .where((e) => e.isNote && e.note!.type == NoteType.lab)
+            .toList();
         break;
     }
   }

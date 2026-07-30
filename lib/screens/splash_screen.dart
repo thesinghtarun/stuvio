@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:studyvault/core/const/constant.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
+import 'package:studyvault/provider/home_provider.dart';
 import 'package:studyvault/provider/workspace_counter_provider.dart';
 import 'package:studyvault/screens/home_screen.dart';
 import 'package:studyvault/screens/onboarding/onboarding_screen.dart';
@@ -30,6 +31,8 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
+    context.read<HomeProvider>().resetInboxPopup();
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
@@ -40,54 +43,35 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(seconds: 3),
     );
 
-    _logoScale = Tween<double>(
-      begin: 0.6,
-      end: 1,
-    ).animate(
+    _logoScale = Tween<double>(begin: 0.6, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
         curve: const Interval(0.0, 0.35, curve: Curves.easeOutBack),
       ),
     );
 
-    _nameOffset = Tween<Offset>(
-      begin: const Offset(-0.8, 0),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.35, 0.65, curve: Curves.easeOutCubic),
-      ),
+    _nameOffset = Tween<Offset>(begin: const Offset(-0.8, 0), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.35, 0.65, curve: Curves.easeOutCubic),
+          ),
+        );
+
+    _nameOpacity = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.35, 0.65)),
     );
 
-    _nameOpacity = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.35, 0.65),
-      ),
-    );
+    _taglineOffset =
+        Tween<Offset>(begin: const Offset(-0.8, 0), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.6, 1, curve: Curves.easeOutCubic),
+          ),
+        );
 
-    _taglineOffset = Tween<Offset>(
-      begin: const Offset(-0.8, 0),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.6, 1, curve: Curves.easeOutCubic),
-      ),
-    );
-
-    _taglineOpacity = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.6, 1),
-      ),
+    _taglineOpacity = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.6, 1)),
     );
 
     _progressAnimation = Tween<double>(
@@ -120,16 +104,16 @@ class _SplashScreenState extends State<SplashScreen>
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            hasWorkspace
-                ?  HomeScreen()
-                : const OnboardingScreen(),
+        builder: (_) => hasWorkspace ? HomeScreen() : const OnboardingScreen(),
       ),
     );
 
     // Wait for the new screen to mount, then release any queued shared files
     Future.delayed(const Duration(milliseconds: 600), () {
-      AppLogger.action('SplashScreen', 'Notifying ShareHandlerService splash is done');
+      AppLogger.action(
+        'SplashScreen',
+        'Notifying ShareHandlerService splash is done',
+      );
       ShareHandlerService.instance.setSplashActive(false);
     });
   }
@@ -148,10 +132,7 @@ class _SplashScreenState extends State<SplashScreen>
   }) {
     return FadeTransition(
       opacity: opacity,
-      child: SlideTransition(
-        position: offset,
-        child: child,
-      ),
+      child: SlideTransition(position: offset, child: child),
     );
   }
 
@@ -165,10 +146,7 @@ class _SplashScreenState extends State<SplashScreen>
 
             ScaleTransition(
               scale: _logoScale,
-              child: Image.asset(
-                splashLogo,
-                width: 220,
-              ),
+              child: Image.asset(splashLogo, width: 220),
             ),
 
             const SizedBox(height: 20),

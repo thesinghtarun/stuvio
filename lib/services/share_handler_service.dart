@@ -1,17 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_sharing_intent/flutter_sharing_intent.dart';
 import 'package:flutter_sharing_intent/model/sharing_file.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:studyvault/core/models/note.dart';
+import 'package:provider/provider.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
-import 'package:studyvault/repositories/note_repository.dart';
-import 'package:studyvault/repositories/subject_repository.dart';
-import 'package:studyvault/repositories/user_repository.dart';
-import 'package:studyvault/repositories/workspace_repository.dart';
-import 'package:studyvault/screens/widgets/save_shared_pdf_dialog.dart';
+import 'package:studyvault/provider/inbox_provider.dart';
 
 class ShareHandlerService {
   ShareHandlerService._();
@@ -35,7 +29,7 @@ class ShareHandlerService {
     );
 
     if (_splashDone) {
-      _tryPresentDialogOrQueue();
+      _processInboxQueue();
     }
   }
 
@@ -109,18 +103,17 @@ class ShareHandlerService {
     debugPrint(
       '🚀 [SHARE_SERVICE] _onNewFilesReceived: ${paths.length} file(s)',
     );
-    // Add new paths avoiding duplicates
     for (final p in paths) {
       if (!_pendingFilePaths.contains(p)) {
         _pendingFilePaths.add(p);
       }
     }
-    _tryPresentDialogOrQueue();
+    _processInboxQueue();
   }
 
-  void _tryPresentDialogOrQueue() {
+  void _processInboxQueue() async {
     debugPrint(
-      '🚀 [SHARE_SERVICE] _tryPresentDialogOrQueue: pending=${_pendingFilePaths.length}, splashDone=$_splashDone',
+      '🚀 [SHARE_SERVICE] _processInboxQueue: pending=${_pendingFilePaths.length}, splashDone=$_splashDone',
     );
     if (_pendingFilePaths.isEmpty) return;
 
@@ -129,113 +122,42 @@ class ShareHandlerService {
       return;
     }
 
+    final pathsToProcess = List<String>.from(_pendingFilePaths);
+    _pendingFilePaths.clear();
+
+    int savedCount = 0;
     final ctx = _navigatorKey?.currentContext;
+
+    InboxProvider? inboxProvider;
     if (ctx != null && ctx.mounted) {
-      final pathsToProcess = List<String>.from(_pendingFilePaths);
-      _pendingFilePaths.clear();
-
-      if (pathsToProcess.length == 1) {
-        debugPrint(
-          '🚀 [SHARE_SERVICE] Presenting dialog for single file: ${pathsToProcess.first}',
-        );
-        SaveSharedPdfDialog.show(ctx, pathsToProcess.first);
-      } else {
-        debugPrint(
-          '🚀 [SHARE_SERVICE] Batch saving ${pathsToProcess.length} files...',
-        );
-        _saveMultipleFilesInstantly(pathsToProcess);
-      }
-    } else {
-      debugPrint(
-        '🚀 [SHARE_SERVICE] Navigator context is null/unmounted. Retrying in 500ms...',
-      );
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _tryPresentDialogOrQueue();
-      });
+      try {
+        inboxProvider = ctx.read<InboxProvider>();
+      } catch (_) {}
     }
-  }
 
-  Future<void> _saveMultipleFilesInstantly(List<String> filePaths) async {
-    debugPrint(
-      '🚀 [SHARE_SERVICE] _saveMultipleFilesInstantly for ${filePaths.length} files',
-    );
-    try {
-      final user = await UserRepository.instance.getUser();
-      if (user == null) {
-        Fluttertoast.showToast(msg: "Please complete setup first");
-        return;
+    for (final path in pathsToProcess) {
+      if (inboxProvider != null) {
+        final item = await inboxProvider.addFileToInbox(path);
+        if (item != null) savedCount++;
+      } else {
+        // Fallback using direct method
+        final provider = InboxProvider();
+        final repoItem = await provider.addFileToInbox(path);
+        if (repoItem != null) savedCount++;
       }
+    }
 
-      final workspaces = await WorkspaceRepository.instance
-          .getWorkspacesForUser(user.id);
-      if (workspaces.isEmpty) {
-        Fluttertoast.showToast(msg: "Please create a workspace first");
-        return;
-      }
-
-      final activeWorkspace = user.currentWorkspaceId != null
-          ? workspaces.firstWhere(
-              (w) => w.id == user.currentWorkspaceId,
-              orElse: () => workspaces.first,
-            )
-          : workspaces.first;
-
-      final subjects = await SubjectRepository.instance.getSubjectsForWorkspace(
-        activeWorkspace.id,
-      );
-      if (subjects.isEmpty) {
-        Fluttertoast.showToast(msg: "Please create a subject first");
-        return;
-      }
-
-      final targetSubject = subjects.first;
-      final appDir = await getApplicationDocumentsDirectory();
-
-      print("Documents Dir: ${appDir.path}");
-      final materialsDir = Directory('${appDir.path}/materials');
-      if (!await materialsDir.exists()) {
-        await materialsDir.create(recursive: true);
-      }
-
-      int savedCount = 0;
-      for (final filePath in filePaths) {
-        final sourceFile = File(filePath);
-        if (await sourceFile.exists()) {
-          final rawFileName = filePath
-              .split(Platform.pathSeparator)
-              .last
-              .split('/')
-              .last
-              .replaceAll('.pdf', '');
-          final sanitizedFileName =
-              '${DateTime.now().millisecondsSinceEpoch}_${rawFileName.replaceAll(RegExp(r'[^\w.-]'), '_')}.pdf';
-          final destPath = '${materialsDir.path}/$sanitizedFileName';
-          final fileSize = await sourceFile.length();
-          await sourceFile.copy(destPath);
-
-          await NoteRepository.instance.createNote(
-            subjectId: targetSubject.id,
-            title: rawFileName,
-            type: NoteType.pdf,
-            filePath: destPath,
-            fileSize: fileSize,
-          );
-          savedCount++;
-        }
-      }
-
-      debugPrint(
-        '🚀 [SHARE_SERVICE] Batch saved $savedCount files to subject: ${targetSubject.name}',
-      );
+    if (savedCount > 0) {
       Fluttertoast.showToast(
-        msg: "Saved $savedCount file(s) in ${targetSubject.name}",
+        msg: "Saved $savedCount file(s) to Inbox",
         toastLength: Toast.LENGTH_LONG,
         gravity: ToastGravity.BOTTOM,
       );
-    } catch (e, st) {
-      debugPrint('❌ [SHARE_SERVICE] Error saving multiple files: $e');
-      AppLogger.error('ShareHandlerService._saveMultipleFilesInstantly', e, st);
-      Fluttertoast.showToast(msg: "Failed to save files");
+      if (ctx != null && ctx.mounted) {
+        try {
+          ctx.read<InboxProvider>().fetchInboxItems();
+        } catch (_) {}
+      }
     }
   }
 

@@ -11,6 +11,7 @@ import 'package:studyvault/core/utils/app_logger.dart';
 import 'package:studyvault/provider/home_provider.dart';
 import 'package:studyvault/repositories/assignment_repository.dart';
 import 'package:studyvault/repositories/note_repository.dart';
+import 'package:studyvault/repositories/subject_repository.dart';
 
 class AssignmentDetailScreen extends StatefulWidget {
   final Assignment assignment;
@@ -22,7 +23,6 @@ class AssignmentDetailScreen extends StatefulWidget {
 }
 
 class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
-  late TextEditingController _titleController;
   late TextEditingController _pdfNameController;
   late DateTime _selectedDueDate;
   late AssignmentStatus _selectedStatus;
@@ -38,8 +38,8 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.assignment.title);
-    _pdfNameController = TextEditingController();
+    _pdfNameController = TextEditingController(text: widget.assignment.title);
+    // _pdfNameController = TextEditingController();
     _selectedDueDate = widget.assignment.dueDate;
 
     // Resolve initial status
@@ -54,7 +54,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
 
   @override
   void dispose() {
-    _titleController.dispose();
+    // _titleController.dispose();
     _pdfNameController.dispose();
     _pdfController?.dispose();
     super.dispose();
@@ -150,7 +150,9 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
       DateTime.now().month,
       DateTime.now().day,
     );
-    final initialDate = _selectedDueDate.isBefore(today) ? today : _selectedDueDate;
+    final initialDate = _selectedDueDate.isBefore(today)
+        ? today
+        : _selectedDueDate;
     final picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -224,7 +226,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
   }
 
   Future<void> _saveAssignment() async {
-    final title = _titleController.text.trim();
+    final title = _pdfNameController.text.trim();
     if (title.isEmpty) {
       Fluttertoast.showToast(msg: 'Please enter assignment title');
       return;
@@ -246,7 +248,11 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
       }
 
       if (mounted) {
-        context.read<HomeProvider>().reload();
+        try {
+          context.read<HomeProvider>().reload();
+        } catch (_) {
+          // HomeProvider not in context (e.g. opened from SubjectMaterialListScreen)
+        }
         Fluttertoast.showToast(msg: 'Assignment updated successfully');
         Navigator.pop(context);
       }
@@ -313,44 +319,36 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Assignment Title Card
-            _buildSectionHeader('ASSIGNMENT NAME'),
+            _buildSectionHeader('SUBJECT NAME'),
             const SizedBox(height: 8),
             Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: const Color(0xFFE5E7EB)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.menu_book_rounded, color: Color(0xFF6750A4)),
+                  const SizedBox(width: 12),
+                  FutureBuilder(
+                    future: SubjectRepository.instance.getSubjectById(
+                      widget.assignment.subjectId,
+                    ),
+                    builder: (context, snapshot) {
+                      return Text(
+                        snapshot.data?.name ?? '',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
-              child: TextField(
-                controller: _titleController,
-                enabled: true,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF111827),
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Enter assignment title...',
-                  hintStyle: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF9CA3AF),
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.edit_note_rounded,
-                    color: Color(0xFF6750A4),
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.all(16),
-                ),
-              ),
             ),
-
             const SizedBox(height: 24),
 
             // Due Date Selector

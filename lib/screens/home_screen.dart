@@ -25,12 +25,6 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       body: IndexedStack(index: provider.currentIndex, children: screens),
       bottomNavigationBar: const CustomBottomNavigation(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.deepPurple,
-        onPressed: () {},
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
     );
   }
 }

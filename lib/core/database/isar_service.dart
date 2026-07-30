@@ -7,6 +7,7 @@ import '../models/workspace.dart';
 import '../models/subject.dart';
 import '../models/note.dart';
 import '../models/assignment.dart';
+import '../models/inbox_item.dart';
 
 class IsarService {
   IsarService._();
@@ -25,6 +26,7 @@ class IsarService {
         SubjectSchema,
         NoteSchema,
         AssignmentSchema,
+        InboxItemSchema,
       ],
       directory: dir.path,
       inspector: true,

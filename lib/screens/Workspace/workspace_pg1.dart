@@ -95,6 +95,7 @@ class WorkspacePg1 extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 5),
             ],
           ),
         );

@@ -2,7 +2,7 @@ import 'package:isar/isar.dart';
 
 part 'note.g.dart';
 
-enum NoteType { note, pdf, pyq, lab }
+enum NoteType { note, assignment, pyq, lab }
 
 @collection
 class Note {

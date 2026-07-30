@@ -1,68 +1,41 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:studyvault/core/models/assignment.dart';
+import 'package:studyvault/core/models/inbox_item.dart';
 import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/models/subject.dart';
 import 'package:studyvault/core/models/user.dart';
 import 'package:studyvault/core/models/workspace.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
-import 'package:studyvault/repositories/assignment_repository.dart';
-import 'package:studyvault/repositories/note_repository.dart';
+import 'package:studyvault/provider/home_provider.dart';
+import 'package:studyvault/provider/inbox_provider.dart';
 import 'package:studyvault/repositories/subject_repository.dart';
 import 'package:studyvault/repositories/user_repository.dart';
 import 'package:studyvault/repositories/workspace_repository.dart';
 
-class SaveSharedPdfDialog extends StatefulWidget {
-  final String sharedFilePath;
-  final String? initialFileName;
+class EditInboxFileDialog extends StatefulWidget {
+  final InboxItem item;
 
-  const SaveSharedPdfDialog({
-    super.key,
-    required this.sharedFilePath,
-    this.initialFileName,
-  });
+  const EditInboxFileDialog({super.key, required this.item});
 
-  static Future<void> show(BuildContext context, String filePath) async {
-    debugPrint('🚀 [SHARE_DIALOG] show() called with filePath: $filePath');
-    final fileName = filePath
-        .split(Platform.pathSeparator)
-        .last
-        .split('/')
-        .last
-        .replaceAll('.pdf', '');
-    AppLogger.action(
-      'SHARE_RECEIVER',
-      'Opening Import Dialog for single file: $filePath',
+  static Future<void> show(BuildContext context, InboxItem item) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => EditInboxFileDialog(item: item),
     );
-
-    try {
-      await showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        useRootNavigator: true,
-        backgroundColor: Colors.transparent,
-        builder: (ctx) => SaveSharedPdfDialog(
-          sharedFilePath: filePath,
-          initialFileName: fileName,
-        ),
-      );
-      debugPrint('🚀 [SHARE_DIALOG] Modal bottom sheet closed/dismissed');
-    } catch (e, st) {
-      debugPrint('❌ [SHARE_DIALOG] Error launching modal bottom sheet: $e');
-      AppLogger.error('SaveSharedPdfDialog.show', e, st);
-    }
   }
 
   @override
-  State<SaveSharedPdfDialog> createState() => _SaveSharedPdfDialogState();
+  State<EditInboxFileDialog> createState() => _EditInboxFileDialogState();
 }
 
-class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
+class _EditInboxFileDialogState extends State<EditInboxFileDialog> {
   late final TextEditingController _titleController;
-  late final TextEditingController _descriptionController;
 
   User? _user;
   List<Workspace> _workspaces = [];
@@ -70,16 +43,10 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
   List<Subject> _subjects = [];
   Subject? _selectedSubject;
 
-  String _selectedCategory = 'Note';
-  final List<String> _categories = [
-    'Note',
-    'Assignment',
-    'PYQ',
-    'Lab Manual',
-  ];
+  NoteType _selectedNoteType = NoteType.note;
 
   DateTime _dueDate = DateTime.now().add(const Duration(days: 1));
-  AssignmentPriority _priority = AssignmentPriority.medium;
+  final AssignmentPriority _priority = AssignmentPriority.medium;
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -87,10 +54,7 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(
-      text: widget.initialFileName ?? 'Shared Document',
-    );
-    _descriptionController = TextEditingController();
+    _titleController = TextEditingController(text: widget.item.title);
     _loadInitialData();
   }
 
@@ -114,7 +78,7 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
         }
       }
     } catch (e, st) {
-      AppLogger.error('SaveSharedPdfDialog._loadInitialData', e, st);
+      AppLogger.error('EditInboxFileDialog._loadInitialData', e, st);
     } finally {
       if (mounted) {
         setState(() {
@@ -128,19 +92,15 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
     final list = await SubjectRepository.instance.getSubjectsForWorkspace(
       workspaceId,
     );
-    setState(() {
-      _subjects = list;
-      _selectedSubject = list.isNotEmpty ? list.first : null;
-    });
+    if (mounted) {
+      setState(() {
+        _subjects = list;
+        _selectedSubject = list.isNotEmpty ? list.first : null;
+      });
+    }
   }
 
-  bool get _isAssignmentCategory => _selectedCategory == 'Assignment';
-
   Future<void> _pickDueDate() async {
-    AppLogger.click(
-      'SaveSharedPdfDialog.DatePicker',
-      'Opening calendar date picker',
-    );
     final today = DateTime(
       DateTime.now().year,
       DateTime.now().month,
@@ -152,149 +112,62 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
       initialDate: initialDate,
       firstDate: today,
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF6750A4),
-              onPrimary: Colors.white,
-              onSurface: Color(0xFF111827),
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
     if (picked != null) {
       setState(() {
         _dueDate = DateTime(picked.year, picked.month, picked.day, 23, 59);
       });
-      AppLogger.info(
-        'SaveSharedPdfDialog',
-        'Selected Due Date: ${_dueDate.toLocal()}',
-      );
     }
   }
 
-  Future<void> _saveSharedFile() async {
+  Future<void> _saveFile() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      Fluttertoast.showToast(msg: "Please enter a title");
+      Fluttertoast.showToast(msg: "Please enter a file name");
       return;
     }
-
     if (_selectedWorkspace == null) {
       Fluttertoast.showToast(msg: "Please select a workspace");
       return;
     }
-
     if (_selectedSubject == null) {
       Fluttertoast.showToast(msg: "Please select a subject");
       return;
     }
 
-    setState(() {
-      _isSaving = true;
-    });
+    setState(() => _isSaving = true);
 
     try {
-      AppLogger.click(
-        'SaveSharedPdfDialog.SaveButton',
-        'Importing file "$title" to Subject: ${_selectedSubject!.name}',
-      );
+      final success = await context
+          .read<InboxProvider>()
+          .saveInboxItemToSubject(
+            item: widget.item,
+            subjectId: _selectedSubject!.id,
+            title: title,
+            noteType: _selectedNoteType,
+            dueDate: _selectedNoteType == NoteType.assignment ? _dueDate : null,
+            priority: _priority,
+          );
 
-      // 1. Copy shared PDF file to app local storage
-      final appDir = await getApplicationDocumentsDirectory();
-      final materialsDir = Directory('${appDir.path}/materials');
-
-      print("Documents Dir: ${appDir.path}");
-      if (!await materialsDir.exists()) {
-        await materialsDir.create(recursive: true);
-      }
-
-      final sourceFile = File(widget.sharedFilePath);
-      final sanitizedFileName =
-          '${DateTime.now().millisecondsSinceEpoch}_${title.replaceAll(RegExp(r'[^\w.-]'), '_')}.pdf';
-      final destinationPath = '${materialsDir.path}/$sanitizedFileName';
-
-      int fileSize = 0;
-      if (await sourceFile.exists()) {
-        fileSize = await sourceFile.length();
-        await sourceFile.copy(destinationPath);
-      }
-
-      AppLogger.db(
-        'SaveSharedPdfDialog',
-        'Copied shared file to: $destinationPath (Size: $fileSize bytes)',
-      );
-
-      // 2. Persist in Isar DB
-      if (_isAssignmentCategory) {
-        final assignment = await AssignmentRepository.instance.createAssignment(
-          subjectId: _selectedSubject!.id,
-          title: title,
-          description: _descriptionController.text.trim().isNotEmpty
-              ? _descriptionController.text.trim()
-              : 'Attached PDF: $sanitizedFileName',
-          dueDate: _dueDate,
-          priority: _priority,
+      if (success) {
+        context.read<HomeProvider>().reload();
+        Fluttertoast.showToast(
+          msg:
+              "Saved to ${_selectedWorkspace!.name} → ${_selectedSubject!.name}",
         );
-
-        await NoteRepository.instance.createNote(
-          subjectId: _selectedSubject!.id,
-          title: '$title (Attached PDF)',
-          type: NoteType.assignment,
-          filePath: destinationPath,
-          fileSize: fileSize,
-        );
-
-        AppLogger.action(
-          'IMPORT_SUCCESS',
-          'Created Assignment ID ${assignment.id} due on ${_dueDate.toLocal()}',
-        );
-      } else {
-        NoteType noteType = NoteType.assignment;
-        if (_selectedCategory == 'Note') noteType = NoteType.note;
-        if (_selectedCategory == 'PYQ') noteType = NoteType.pyq;
-        if (_selectedCategory == 'Lab Manual') noteType = NoteType.lab;
-
-        final note = await NoteRepository.instance.createNote(
-          subjectId: _selectedSubject!.id,
-          title: title,
-          type: noteType,
-          filePath: destinationPath,
-          fileSize: fileSize,
-        );
-        AppLogger.action(
-          'IMPORT_SUCCESS',
-          'Created Note ID ${note.id} under Subject: ${_selectedSubject!.name}',
-        );
-      }
-
-      Fluttertoast.showToast(
-        msg: "Saved in ${_selectedWorkspace!.name} → ${_selectedSubject!.name}",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-      );
-      if (mounted) {
-        Navigator.pop(context);
+        if (mounted) Navigator.pop(context);
       }
     } catch (e, st) {
-      AppLogger.error('SaveSharedPdfDialog._saveSharedFile', e, st);
-      Fluttertoast.showToast(msg: "Failed to import file: $e");
+      AppLogger.error('EditInboxFileDialog._saveFile', e, st);
+      Fluttertoast.showToast(msg: "Failed to save file: $e");
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   @override
   void dispose() {
     _titleController.dispose();
-    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -315,7 +188,6 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Handle Bar
               Center(
                 child: Container(
                   width: 44,
@@ -327,25 +199,23 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Title Row matching app font
               Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6750A4).withValues(alpha: 0.1),
+                      color: const Color(0xFF5C35E8).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
-                      Icons.picture_as_pdf,
-                      color: Color(0xFF6750A4),
+                      Icons.drive_file_rename_outline,
+                      color: Color(0xFF5C35E8),
                       size: 24,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'Import Shared File',
+                    'Edit & Categorize File',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -360,13 +230,13 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(32),
-                    child: CircularProgressIndicator(color: Color(0xFF6750A4)),
+                    child: CircularProgressIndicator(color: Color(0xFF5C35E8)),
                   ),
                 )
               else ...[
-                // File Title Label & Field
+                // File Name
                 Text(
-                  'File Title',
+                  'File Name',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -387,22 +257,15 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
                     ),
                     filled: true,
                     fillColor: const Color(0xFFF9FAFB),
-                    hintText: 'Enter title for PDF/Note',
-                    hintStyle: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFF9CA3AF),
-                    ),
+                    hintText: 'Enter file name',
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(
-                        color: Color(0xFF6750A4),
+                        color: Color(0xFF5C35E8),
                         width: 1.5,
                       ),
                     ),
@@ -448,10 +311,6 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
                             _selectedWorkspace = val;
                           });
                           _loadSubjectsForWorkspace(val.id);
-                          AppLogger.click(
-                            'SaveSharedPdfDialog.WorkspaceDropdown',
-                            'Switched workspace: ${val.name}',
-                          );
                         }
                       },
                     ),
@@ -500,10 +359,6 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
                           setState(() {
                             _selectedSubject = val;
                           });
-                          AppLogger.click(
-                            'SaveSharedPdfDialog.SubjectDropdown',
-                            'Selected subject: ${val.name}',
-                          );
                         }
                       },
                     ),
@@ -511,89 +366,46 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                // Category Dropdown
+                // Material Type Choice Section (Assignment, Notes, PYQs, Labs)
                 Text(
-                  'Category / Material Type',
+                  'Material Type',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: const Color(0xFF374151),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedCategory,
-                      dropdownColor: Colors.white,
-                      isExpanded: true,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF111827),
-                      ),
-                      items: _categories.map((c) {
-                        return DropdownMenuItem<String>(
-                          value: c,
-                          child: Text(c),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() {
-                            _selectedCategory = val;
-                          });
-                          AppLogger.click(
-                            'SaveSharedPdfDialog.CategoryDropdown',
-                            'Selected category: $val',
-                          );
-                        }
-                      },
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildTypeChip('Notes', NoteType.note, Icons.description),
+                    _buildTypeChip(
+                      'Assignment',
+                      NoteType.assignment,
+                      Icons.assignment,
                     ),
-                  ),
+                    _buildTypeChip('PYQs', NoteType.pyq, Icons.quiz),
+                    _buildTypeChip('Labs', NoteType.lab, Icons.science),
+                  ],
                 ),
                 const SizedBox(height: 16),
 
-                // Conditional Deadline Section for Assignment / Homework
-                if (_isAssignmentCategory) ...[
+                // Assignment details if Assignment chosen
+                if (_selectedNoteType == NoteType.assignment) ...[
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF9FAFB),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: const Color(0xFF6750A4).withValues(alpha: 0.3),
+                        color: const Color(0xFF5C35E8).withValues(alpha: 0.3),
                       ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.event,
-                              color: Color(0xFF6750A4),
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Assignment Deadline & Priority',
-                              style: GoogleFonts.plusJakartaSans(
-                                color: const Color(0xFF111827),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Date Picker Button
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -602,21 +414,20 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
                               style: GoogleFonts.plusJakartaSans(
                                 color: const Color(0xFF374151),
                                 fontWeight: FontWeight.w600,
-                                fontSize: 14,
                               ),
                             ),
                             ElevatedButton.icon(
                               onPressed: _pickDueDate,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF6750A4),
+                                backgroundColor: const Color(0xFF5C35E8),
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
                               icon: const Icon(
                                 Icons.calendar_month,
-                                size: 18,
+                                size: 16,
                                 color: Colors.white,
                               ),
                               label: Text(
@@ -624,64 +435,11 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
                                 style: GoogleFonts.plusJakartaSans(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
+                                  fontSize: 12,
                                 ),
                               ),
                             ),
                           ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Priority Level Choice Chips
-                        Text(
-                          'Priority Level',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: const Color(0xFF6B7280),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: AssignmentPriority.values.map((p) {
-                            final isSelected = _priority == p;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: ChoiceChip(
-                                label: Text(
-                                  p.name.toUpperCase(),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : const Color(0xFF374151),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                selected: isSelected,
-                                selectedColor: const Color(0xFF6750A4),
-                                backgroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  side: BorderSide(
-                                    color: isSelected
-                                        ? const Color(0xFF6750A4)
-                                        : const Color(0xFFE5E7EB),
-                                  ),
-                                ),
-                                onSelected: (selected) {
-                                  if (selected) {
-                                    setState(() {
-                                      _priority = p;
-                                    });
-                                    AppLogger.click(
-                                      'SaveSharedPdfDialog.PriorityChip',
-                                      'Set priority: ${p.name}',
-                                    );
-                                  }
-                                },
-                              ),
-                            );
-                          }).toList(),
                         ),
                       ],
                     ),
@@ -689,14 +447,14 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
                   const SizedBox(height: 20),
                 ],
 
-                // Main Action Save Button
+                // Save Button
                 SizedBox(
                   width: double.infinity,
-                  height: 52,
+                  height: 50,
                   child: ElevatedButton(
-                    onPressed: _isSaving ? null : _saveSharedFile,
+                    onPressed: _isSaving ? null : _saveFile,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6750A4),
+                      backgroundColor: const Color(0xFF5C35E8),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -712,7 +470,7 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
                             ),
                           )
                         : Text(
-                            'Save to Stuvio',
+                            'Save to Subject',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -726,6 +484,41 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTypeChip(String label, NoteType type, IconData icon) {
+    final isSelected = _selectedNoteType == type;
+    return ChoiceChip(
+      avatar: Icon(
+        icon,
+        size: 16,
+        color: isSelected ? Colors.white : const Color(0xFF5C35E8),
+      ),
+      label: Text(
+        label,
+        style: GoogleFonts.plusJakartaSans(
+          color: isSelected ? Colors.white : const Color(0xFF374151),
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+        ),
+      ),
+      selected: isSelected,
+      selectedColor: const Color(0xFF5C35E8),
+      backgroundColor: const Color(0xFFF3F4F6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(
+          color: isSelected ? const Color(0xFF5C35E8) : const Color(0xFFE5E7EB),
+        ),
+      ),
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            _selectedNoteType = type;
+          });
+        }
+      },
     );
   }
 }

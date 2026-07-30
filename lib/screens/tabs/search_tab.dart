@@ -1,14 +1,15 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:studyvault/core/models/assignment.dart';
 import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
+import 'package:studyvault/core/utils/note_type_theme.dart';
 import 'package:studyvault/provider/search_provider.dart';
 import 'package:studyvault/provider/workspace_counter_provider.dart';
 import 'package:studyvault/repositories/note_repository.dart';
+import 'package:studyvault/screens/assignment_detail_screen.dart';
+import 'package:studyvault/screens/note_detail_screen.dart';
 
 class SearchTab extends StatefulWidget {
   const SearchTab({super.key});
@@ -44,6 +45,21 @@ class _SearchTabState extends State<SearchTab> {
               body: SafeArea(
                 child: Column(
                   children: [
+                    const SizedBox(height: 20),
+
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: Text(
+                          "Search",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 30,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 16),
 
                     // Search Input Header
@@ -293,30 +309,30 @@ class _SearchSuggestionView extends StatelessWidget {
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
                 childAspectRatio: 2.2,
-                children: const [
+                children: [
                   _QuickFilterCard(
-                    icon: Icons.menu_book_rounded,
+                    icon: NoteTypeTheme.icon(NoteType.note),
                     title: "Notes",
                     filter: SearchFilter.notes,
-                    color: Color(0xFF3B82F6),
+                    color: NoteTypeTheme.color(NoteType.note),
                   ),
                   _QuickFilterCard(
-                    icon: Icons.assignment_rounded,
+                    icon: NoteTypeTheme.assignmentIcon,
                     title: "Assignments",
                     filter: SearchFilter.assignments,
-                    color: Color(0xFF10B981),
+                    color: NoteTypeTheme.assignmentColor,
                   ),
                   _QuickFilterCard(
-                    icon: Icons.quiz_rounded,
+                    icon: NoteTypeTheme.icon(NoteType.pyq),
                     title: "PYQs",
                     filter: SearchFilter.pyqs,
-                    color: Color(0xFFF59E0B),
+                    color: NoteTypeTheme.color(NoteType.pyq),
                   ),
                   _QuickFilterCard(
-                    icon: Icons.science_rounded,
+                    icon: NoteTypeTheme.icon(NoteType.lab),
                     title: "Labs",
                     filter: SearchFilter.labs,
-                    color: Color(0xFF8B5CF6),
+                    color: NoteTypeTheme.color(NoteType.lab),
                   ),
                 ],
               ),
@@ -484,11 +500,11 @@ class _SearchResultView extends StatelessWidget {
                 separatorBuilder: (context, index) =>
                     const SizedBox(height: 10),
                 itemBuilder: (context, index) {
-                  final note = provider.results[index];
-                  final subject = provider.getSubject(note.subjectId);
+                  final item = provider.results[index];
+                  final subject = provider.getSubject(item.subjectId);
 
                   return _SearchResultCard(
-                    note: note,
+                    item: item,
                     subjectName: subject?.name ?? "Subject",
                   );
                 },
@@ -543,179 +559,74 @@ class _FilterChipWidget extends StatelessWidget {
 }
 
 class _SearchResultCard extends StatelessWidget {
-  final Note note;
+  final SearchResultItem item;
   final String subjectName;
 
-  const _SearchResultCard({required this.note, required this.subjectName});
+  const _SearchResultCard({required this.item, required this.subjectName});
 
   IconData _icon() {
-    switch (note.type) {
-      case NoteType.note:
-        return Icons.menu_book_rounded;
-      case NoteType.pdf:
-        return Icons.picture_as_pdf_rounded;
-      case NoteType.pyq:
-        return Icons.quiz_rounded;
-      case NoteType.lab:
-        return Icons.science_rounded;
-    }
+    if (item.isAssignment) return NoteTypeTheme.assignmentIcon;
+    return NoteTypeTheme.icon(item.note!.type);
   }
 
   Color _iconColor() {
-    switch (note.type) {
-      case NoteType.note:
-        return const Color(0xFF3B82F6);
-      case NoteType.pdf:
-        return const Color(0xFFEF4444);
-      case NoteType.pyq:
-        return const Color(0xFFF59E0B);
-      case NoteType.lab:
-        return const Color(0xFF8B5CF6);
-    }
+    if (item.isAssignment) return NoteTypeTheme.assignmentColor;
+    return NoteTypeTheme.color(item.note!.type);
   }
 
-  Future<void> _handleNoteTap(BuildContext context) async {
-    AppLogger.click(
-      'SearchTab.SearchResultCard',
-      'Tapped search result note ID=${note.id}: "${note.title}"',
-    );
-
-    // Update last opened in database
-    await NoteRepository.instance.updateLastOpened(note.id);
-
-    // If there is a file path, try to open it via the native viewer
-    if (note.filePath.isNotEmpty) {
-      final file = File(note.filePath);
-      print("FileOPEN: $file");
-      print("Exists: ${await file.exists()}");
-      print("Length: ${await file.length()}");
-      if (await file.exists()) {
-        const platform = MethodChannel('com.singhtarun.stuvio/open_file');
-        try {
-          final result = await platform.invokeMethod('openFile', {
-            'filePath': note.filePath,
-          });
-          AppLogger.action(
-            'OPEN_FILE',
-            'openFile result: $result for ${note.filePath}',
-          );
-          return;
-        } catch (e, st) {
-          AppLogger.error('SearchTab.openFile', e, st);
-          Fluttertoast.showToast(msg: 'Could not open file: $e');
-          return;
-        }
-      } else {
-        AppLogger.info('SearchTab', 'File not found on disk: ${note.filePath}');
-        Fluttertoast.showToast(msg: 'File not found on device');
-        return;
-      }
-    }
-
-    // No file path — show note details sheet (text notes)
-    if (context.mounted) {
-      _showNoteDetailsSheet(context);
-    }
-  }
-
-  void _showNoteDetailsSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      backgroundColor: Colors.white,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: _iconColor().withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(_icon(), color: _iconColor(), size: 24),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          note.title,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF111827),
-                          ),
-                        ),
-                        Text(
-                          subjectName,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            color: const Color(0xFF6B7280),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              if (note.content != null && note.content!.isNotEmpty) ...[
-                Text(
-                  "Note Content:",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: const Color(0xFF374151),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                  ),
-                  child: Text(
-                    note.content!,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      color: const Color(0xFF111827),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-              Text(
-                "Created: ${note.createdAt.day.toString().padLeft(2, '0')}/${note.createdAt.month.toString().padLeft(2, '0')}/${note.createdAt.year}",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  color: const Color(0xFF9CA3AF),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
+  Future<void> _handleTap(BuildContext context) async {
+    if (item.isAssignment) {
+      AppLogger.click(
+        'SearchTab.SearchResultCard',
+        'Tapped assignment search result ID=${item.assignment!.id}: "${item.assignment!.title}"',
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AssignmentDetailScreen(
+            assignment: item.assignment!,
+          ),
+        ),
+      );
+    } else if (item.isNote) {
+      final note = item.note!;
+      AppLogger.click(
+        'SearchTab.SearchResultCard',
+        'Tapped note search result ID=${note.id}: "${note.title}"',
+      );
+      await NoteRepository.instance.updateLastOpened(note.id);
+      if (context.mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => NoteDetailScreen(
+              note: note,
+              subjectName: subjectName,
+            ),
           ),
         );
-      },
-    );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final formattedSize = note.fileSize > 0
-        ? "${(note.fileSize / 1024).toStringAsFixed(1)} KB"
-        : "Text Note";
+    final String subtitle;
+    final String extraMeta;
+
+    if (item.isAssignment) {
+      final a = item.assignment!;
+      subtitle = "$subjectName • Assignment";
+      extraMeta =
+          "Due: ${a.dueDate.day.toString().padLeft(2, '0')}/${a.dueDate.month.toString().padLeft(2, '0')}/${a.dueDate.year}";
+    } else {
+      final n = item.note!;
+      final formattedSize = n.fileSize > 0
+          ? "${(n.fileSize / 1024).toStringAsFixed(1)} KB"
+          : "Text Note";
+      subtitle = "$subjectName • ${NoteTypeTheme.label(n.type)}";
+      extraMeta = formattedSize;
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -732,7 +643,7 @@ class _SearchResultCard extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => _handleNoteTap(context),
+        onTap: () => _handleTap(context),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -751,7 +662,7 @@ class _SearchResultCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      note.title,
+                      item.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
@@ -762,7 +673,7 @@ class _SearchResultCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      subjectName,
+                      subtitle,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -772,14 +683,16 @@ class _SearchResultCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(
-                          Icons.storage_rounded,
+                        Icon(
+                          item.isAssignment
+                              ? Icons.event_rounded
+                              : Icons.storage_rounded,
                           size: 13,
-                          color: Color(0xFF9CA3AF),
+                          color: const Color(0xFF9CA3AF),
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          formattedSize,
+                          extraMeta,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
@@ -794,7 +707,7 @@ class _SearchResultCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          "${note.createdAt.day.toString().padLeft(2, '0')}/${note.createdAt.month.toString().padLeft(2, '0')}/${note.createdAt.year}",
+                          "${item.date.day.toString().padLeft(2, '0')}/${item.date.month.toString().padLeft(2, '0')}/${item.date.year}",
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,

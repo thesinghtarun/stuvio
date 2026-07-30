@@ -1,15 +1,21 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:studyvault/core/models/assignment.dart';
 import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/models/workspace.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
+import 'package:studyvault/core/utils/icon_helper.dart';
+import 'package:studyvault/core/utils/note_type_theme.dart';
 import 'package:studyvault/provider/home_provider.dart';
+import 'package:studyvault/provider/inbox_provider.dart';
 import 'package:studyvault/provider/workspace_counter_provider.dart';
+import 'package:studyvault/repositories/subject_repository.dart';
 import 'package:studyvault/screens/assignment_detail_screen.dart';
+import 'package:studyvault/screens/inbox_screen.dart';
+import 'package:studyvault/screens/note_detail_screen.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
@@ -17,6 +23,7 @@ class HomeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Trigger HomeProvider load when workspace changes
+    final homeProvider = context.watch<HomeProvider>();
     return Consumer<WorkspaceCounterProvider>(
       builder: (context, workspaceProvider, child) {
         final workspaceId = workspaceProvider.selectedWorkspace?.id;
@@ -24,64 +31,177 @@ class HomeTab extends StatelessWidget {
         // Load home data whenever workspaceId changes
         WidgetsBinding.instance.addPostFrameCallback((_) {
           context.read<HomeProvider>().loadForWorkspace(workspaceId);
-        });
 
+          //To check if inbox is empty
+          final inbox = context.read<InboxProvider>();
+          context.read<HomeProvider>().showInboxPopupOnce(
+            inbox.items.isNotEmpty,
+          );
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final inbox = context.read<InboxProvider>();
+
+          inbox.onInboxLoaded = () {
+            context.read<HomeProvider>().showInboxPopupOnce(
+              inbox.items.isNotEmpty,
+            );
+          };
+        });
         return Scaffold(
           backgroundColor: const Color(0xFFF9FAFB),
           body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-                vertical: 16.0,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Greeting
-                  Text(
-                    _getGreeting(),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      color: const Color(0xFF6B7280),
-                      fontWeight: FontWeight.w600,
+            child: Stack(
+              children: [
+                IgnorePointer(
+                  ignoring: homeProvider.showInboxImg,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Greeting & Inbox Header Row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _getGreeting(),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 16,
+                                    color: const Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "${workspaceProvider.userName} 👋🏻",
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF111827),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Consumer<InboxProvider>(
+                              builder: (context, inboxProvider, _) {
+                                final count = inboxProvider.count;
+                                return GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const InboxScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          border: Border.all(
+                                            color: const Color(0xFFE5E7EB),
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(
+                                                alpha: 0.04,
+                                              ),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.inbox_rounded,
+                                          color: Color(0xFF5C35E8),
+                                          size: 24,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        right: -4,
+                                        top: -4,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: count > 0
+                                                ? const Color(0xFFEF4444)
+                                                : const Color(0xFF9CA3AF),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          constraints: const BoxConstraints(
+                                            minWidth: 20,
+                                            minHeight: 20,
+                                          ),
+                                          child: Text(
+                                            '$count',
+                                            textAlign: TextAlign.center,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Workspace Dropdown
+                        _WorkspaceDropdown(provider: workspaceProvider),
+
+                        const SizedBox(height: 24),
+
+                        // Deadlines Section
+                        const _DeadlinesSection(),
+
+                        // Upcoming Section
+                        const _UpcomingSection(),
+
+                        // Notes Section
+                        const _NotesSection(),
+
+                        //PYQs Section
+                        // const _PYQsSection(),
+
+                        // Empty State — shown only when all sections are empty
+                        const _EmptyHomeState(),
+
+                        const SizedBox(height: 20),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 2),
-
-                  // User Name
-                  Text(
-                    "${workspaceProvider.userName} 👋🏻",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF111827),
+                ),
+                if (homeProvider.showInboxImg)
+                  Positioned.fill(
+                    child: ClipRect(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        child: Container(color: Colors.black.withOpacity(0.35)),
+                      ),
                     ),
                   ),
-
-                  const SizedBox(height: 20),
-
-                  // Workspace Dropdown
-                  _WorkspaceDropdown(provider: workspaceProvider),
-
-                  const SizedBox(height: 24),
-
-                  // Deadlines Section
-                  const _DeadlinesSection(),
-
-                  // Upcoming Section
-                  const _UpcomingSection(),
-
-                  const SizedBox(height: 24),
-
-                  // Notes Section
-                  const _NotesSection(),
-
-                  // Empty State — shown only when all sections are empty
-                  const _EmptyHomeState(),
-
-                  const SizedBox(height: 20),
-                ],
-              ),
+                InboxContainer(),
+              ],
             ),
           ),
         );
@@ -98,6 +218,106 @@ class HomeTab extends StatelessWidget {
   }
 }
 
+class InboxContainer extends StatelessWidget {
+  const InboxContainer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<HomeProvider>(
+      builder: (context, provider, child) {
+        if (!provider.showInboxImg) {
+          return const SizedBox.shrink();
+        }
+
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.7,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 16,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: IconButton(
+                        onPressed: provider.hideInboxPopup,
+                        icon: const Icon(Icons.arrow_back_ios),
+                      ),
+                    ),
+                    Center(
+                      child: Image.asset(
+                        "assets/images/wave.png",
+                        width: 200,
+                        height: 200,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "Some files need your attention",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "Click the button to organize your learnings",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13),
+                    ),
+                    SizedBox(height: 20),
+                    Consumer<HomeProvider>(
+                      builder: (context, provider, child) {
+                        return SizedBox(
+                          height: 50,
+                          width: MediaQuery.of(context).size.width * 0.6,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF5C35E8),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: () {
+                              provider.hideInboxPopup();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => InboxScreen(),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              "Open Inbox",
+                              style: GoogleFonts.plusJakartaSans(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 // ─── Workspace Dropdown ───────────────────────────────────────────────────────
 
 class _WorkspaceDropdown extends StatelessWidget {
@@ -171,7 +391,7 @@ class _WorkspaceDropdown extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
-                      IconData(w.icon, fontFamily: 'MaterialIcons'),
+                      iconFromCode(w.icon),
                       color: const Color(0xFF6750A4),
                       size: 18,
                     ),
@@ -310,63 +530,60 @@ class _DeadlineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFEE2E2), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFEF4444).withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Top row: "Due Tomorrow" label + icon badge
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 14, 16, 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Due Tomorrow',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFFEF4444),
-                  ),
-                ),
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFE4E6),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.shield_outlined,
-                      color: Color(0xFFF43F5E),
-                      size: 20,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFFEE2E2), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFEF4444).withValues(alpha: 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Top row: "Due Tomorrow" label + icon badge
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 16, 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Due Tomorrow',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFEF4444),
                     ),
                   ),
-                ),
-              ],
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFE4E6),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.shield_outlined,
+                        color: Color(0xFFF43F5E),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          // Bottom: clickable title + date
-          InkWell(
-            onTap: onTap,
-            borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(19),
-            ),
-            child: Container(
+            // Bottom: title + date (styled section)
+            Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
               decoration: const BoxDecoration(
@@ -400,8 +617,8 @@ class _DeadlineCard extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -590,23 +807,22 @@ class _NotesSection extends StatelessWidget {
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, idx) {
                 final note = displayed[idx];
+
                 return _NoteCard(
                   note: note,
                   onTap: () async {
-                    if (note.filePath.isNotEmpty) {
-                      const platform = MethodChannel(
-                        'com.singhtarun.stuvio/open_file',
-                      );
-                      try {
-                        await platform.invokeMethod('openFile', {
-                          'filePath': note.filePath,
-                        });
-                      } catch (e) {
-                        Fluttertoast.showToast(msg: 'Could not open file: $e');
-                      }
-                    } else {
-                      Fluttertoast.showToast(msg: 'Note file is not available');
-                    }
+                    final subject = await SubjectRepository.instance
+                        .getSubjectById(note.subjectId);
+                    if (!context.mounted) return;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NoteDetailScreen(
+                          note: note,
+                          subjectName: subject?.name ?? 'Unknown Subject',
+                        ),
+                      ),
+                    );
                   },
                 );
               },
@@ -626,6 +842,10 @@ class _NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final typeColor = NoteTypeTheme.color(note.type);
+    final typeIcon = NoteTypeTheme.icon(note.type);
+    final typeLabel = NoteTypeTheme.label(note.type);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -648,14 +868,10 @@ class _NoteCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF6750A4).withValues(alpha: 0.1),
+                color: typeColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.picture_as_pdf_rounded,
-                color: Color(0xFF6750A4),
-                size: 22,
-              ),
+              child: Icon(typeIcon, color: typeColor, size: 22),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -673,13 +889,20 @@ class _NoteCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    note.type == NoteType.pdf ? 'PDF Document' : 'Note',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF6B7280),
+                  FutureBuilder(
+                    future: SubjectRepository.instance.getSubjectById(
+                      note.subjectId,
                     ),
+                    builder: (context, snapshot) {
+                      return Text(
+                        "$typeLabel • ${snapshot.data?.name ?? ''}",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF6B7280),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

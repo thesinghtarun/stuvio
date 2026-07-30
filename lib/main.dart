@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:studyvault/core/database/isar_service.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
@@ -12,6 +13,12 @@ import 'package:studyvault/provider/onboarding_provider.dart';
 import 'package:studyvault/provider/workspace_counter_provider.dart';
 import 'package:studyvault/screens/splash_screen.dart';
 import 'package:studyvault/services/share_handler_service.dart';
+import 'package:studyvault/provider/inbox_provider.dart';
+
+///Unit ID
+///ca-app-pub-1345393972469011/3049217586
+///App ID
+///ca-app-pub-1345393972469011~7339248168
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -23,6 +30,8 @@ Future<void> main() async {
   } catch (e, st) {
     AppLogger.error('main.IsarInit', e, st);
   }
+
+  MobileAds.instance.initialize();
 
   runApp(const MyApp());
 }
@@ -53,6 +62,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider(create: (context) => SubjectProvider()),
         ChangeNotifierProvider(create: (context) => SearchProvider()),
         ChangeNotifierProvider(create: (context) => ProfileProvider()),
+        ChangeNotifierProvider(create: (context) => InboxProvider()),
       ],
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,

@@ -4,8 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/models/subject.dart';
+import 'package:studyvault/core/utils/icon_helper.dart';
+import 'package:studyvault/core/utils/note_type_theme.dart';
 import 'package:studyvault/provider/subject_provider.dart';
 import 'package:studyvault/provider/workspace_counter_provider.dart';
+import 'package:studyvault/screens/note_detail_screen.dart';
+import 'package:studyvault/screens/subject_material_list_screen.dart';
 
 class SubjectsTab extends StatelessWidget {
   const SubjectsTab({super.key});
@@ -174,6 +178,7 @@ class SubjectsTab extends StatelessWidget {
                               // STATS GRID
                               //-----------------------------------------
                               _StatsGrid(
+                                subject: provider.selectedSubject,
                                 notes: provider.notesCount,
                                 assignments: provider.assignmentCount,
                                 pyqs: provider.pyqCount,
@@ -262,7 +267,7 @@ class _SubjectCard extends StatelessWidget {
             right: 20,
             bottom: 20,
             child: Icon(
-              IconData(subject.icon, fontFamily: 'MaterialIcons'),
+              iconFromCode(subject.icon),
               color: Colors.white.withOpacity(.15),
               size: 80,
             ),
@@ -280,7 +285,7 @@ class _SubjectCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: Icon(
-                    IconData(subject.icon, fontFamily: 'MaterialIcons'),
+                    iconFromCode(subject.icon),
                     color: Colors.white,
                     size: 28,
                   ),
@@ -316,60 +321,81 @@ class _SubjectCard extends StatelessWidget {
 }
 
 class _StatsGrid extends StatelessWidget {
+  final Subject? subject;
   final int notes;
   final int assignments;
   final int pyqs;
   final int labs;
 
   const _StatsGrid({
+    required this.subject,
     required this.notes,
     required this.assignments,
     required this.pyqs,
     required this.labs,
   });
 
+  void _openCategory(
+    BuildContext context, {
+    required String title,
+    NoteType? noteType,
+    bool isAssignment = false,
+  }) {
+    if (subject == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SubjectMaterialListScreen(
+          subject: subject!,
+          title: title,
+          noteType: noteType,
+          isAssignment: isAssignment,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GridView.count(
       crossAxisCount: 2,
-
       shrinkWrap: true,
-
       physics: const NeverScrollableScrollPhysics(),
-
       childAspectRatio: 1.6,
-
       crossAxisSpacing: 14,
-
       mainAxisSpacing: 14,
-
       children: [
         _StatCard(
-          icon: Icons.menu_book_rounded,
+          icon: NoteTypeTheme.icon(NoteType.note),
           title: "Notes",
           value: notes.toString(),
-          color: Colors.deepPurple,
+          color: NoteTypeTheme.color(NoteType.note),
+          onTap: () =>
+              _openCategory(context, title: "Notes", noteType: NoteType.note),
         ),
-
         _StatCard(
-          icon: Icons.assignment_rounded,
+          icon: NoteTypeTheme.assignmentIcon,
           title: "Assignments",
           value: assignments.toString(),
-          color: Colors.orange,
+          color: NoteTypeTheme.assignmentColor,
+          onTap: () =>
+              _openCategory(context, title: "Assignments", isAssignment: true),
         ),
-
         _StatCard(
-          icon: Icons.quiz_rounded,
+          icon: NoteTypeTheme.icon(NoteType.pyq),
           title: "PYQs",
           value: pyqs.toString(),
-          color: Colors.blue,
+          color: NoteTypeTheme.color(NoteType.pyq),
+          onTap: () =>
+              _openCategory(context, title: "PYQs", noteType: NoteType.pyq),
         ),
-
         _StatCard(
-          icon: Icons.science_rounded,
+          icon: NoteTypeTheme.icon(NoteType.lab),
           title: "Labs",
           value: labs.toString(),
-          color: Colors.green,
+          color: NoteTypeTheme.color(NoteType.lab),
+          onTap: () =>
+              _openCategory(context, title: "Labs", noteType: NoteType.lab),
         ),
       ],
     );
@@ -381,85 +407,72 @@ class _StatCard extends StatelessWidget {
   final String title;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   const _StatCard({
     required this.icon,
     required this.title,
     required this.value,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-
-      padding: const EdgeInsets.all(10),
-
-      decoration: BoxDecoration(
-        color: Colors.white,
-
-        borderRadius: BorderRadius.circular(22),
-
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.05),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-
-            height: 52,
-
-            decoration: BoxDecoration(
-              color: color.withOpacity(.12),
-
-              borderRadius: BorderRadius.circular(16),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.05),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
             ),
-
-            child: Icon(icon, color: color),
-          ),
-
-          const SizedBox(width: 14),
-
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-
-              crossAxisAlignment: CrossAxisAlignment.start,
-
-              children: [
-                Text(
-                  value,
-
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 20,
-
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 2),
-
-                Text(
-                  title,
-
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: color.withOpacity(.12),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: color),
             ),
-          ),
-        ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -519,31 +532,26 @@ class _RecentFilesSection extends StatelessWidget {
 
         switch (note.type) {
           case NoteType.note:
-            icon = Icons.menu_book_rounded;
-            color = Colors.deepPurple;
-            break;
-
-          case NoteType.pdf:
-            icon = Icons.picture_as_pdf_rounded;
-            color = Colors.red;
-            break;
-
+          case NoteType.assignment:
           case NoteType.pyq:
-            icon = Icons.quiz_rounded;
-            color = Colors.blue;
-            break;
-
           case NoteType.lab:
-            icon = Icons.science_rounded;
-            color = Colors.green;
+            icon = NoteTypeTheme.icon(note.type);
+            color = NoteTypeTheme.color(note.type);
             break;
         }
 
         return InkWell(
           borderRadius: BorderRadius.circular(22),
           onTap: () {
-            // TODO
-            // Open file
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => NoteDetailScreen(
+                  note: note,
+                  subjectName: provider.selectedSubject?.name,
+                ),
+              ),
+            );
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),

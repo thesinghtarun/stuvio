@@ -311,13 +311,13 @@ P _noteDeserializeProp<P>(
 
 const _NotetypeEnumValueMap = {
   'note': 0,
-  'pdf': 1,
+  'assignment': 1,
   'pyq': 2,
   'lab': 3,
 };
 const _NotetypeValueEnumMap = {
   0: NoteType.note,
-  1: NoteType.pdf,
+  1: NoteType.assignment,
   2: NoteType.pyq,
   3: NoteType.lab,
 };

@@ -3,12 +3,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:studyvault/core/models/workspace.dart';
+import 'package:studyvault/core/utils/icon_helper.dart';
 import 'package:studyvault/provider/profile_provider.dart';
 import 'package:studyvault/provider/workspace_counter_provider.dart';
 import 'package:studyvault/provider/workspace_screen_provider.dart';
 import 'package:studyvault/screens/Workspace/workspace_screen.dart';
+import 'package:studyvault/screens/about_app_screen.dart';
+import 'package:studyvault/screens/privacy_policy_screen.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ProfileTab
@@ -155,10 +159,10 @@ class _ProfileTabState extends State<ProfileTab>
                       if (name.isEmpty) return;
                       Navigator.pop(sheetCtx);
                       await context.read<ProfileProvider>().updateUserName(
-                            newName: name,
-                            workspaceProvider:
-                                context.read<WorkspaceCounterProvider>(),
-                          );
+                        newName: name,
+                        workspaceProvider: context
+                            .read<WorkspaceCounterProvider>(),
+                      );
                     },
                     child: Text(
                       'Save',
@@ -255,9 +259,7 @@ class _ProfileTabState extends State<ProfileTab>
                         ),
                       ),
                       const Spacer(),
-                      _AddButton(
-                        onTap: () => _openAddWorkspace(context),
-                      ),
+                      _AddButton(onTap: () => _openAddWorkspace(context)),
                     ],
                   ),
                 ),
@@ -286,8 +288,8 @@ class _ProfileTabState extends State<ProfileTab>
                         child: _WorkspaceCard(
                           workspace: workspaces[i],
                           isActive: activeWorkspace?.id == workspaces[i].id,
-                          onTap: () => workspaceProvider
-                              .selectWorkspace(workspaces[i]),
+                          onTap: () =>
+                              workspaceProvider.selectWorkspace(workspaces[i]),
                         ),
                       ),
                       childCount: workspaces.length,
@@ -356,8 +358,18 @@ class _HeroBanner extends StatelessWidget {
   String _memberSinceLabel(DateTime? date) {
     if (date == null) return '';
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return 'Member since ${months[date.month - 1]} ${date.year}';
   }
@@ -571,11 +583,7 @@ class _StatsRow extends StatelessWidget {
 class _Divider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 40,
-      color: const Color(0xFFE5E7EB),
-    );
+    return Container(width: 1, height: 40, color: const Color(0xFFE5E7EB));
   }
 }
 
@@ -708,7 +716,7 @@ class _WorkspaceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = Color(workspace.color);
-    final iconData = IconData(workspace.icon, fontFamily: 'MaterialIcons');
+    final iconData = iconFromCode(workspace.icon);
 
     return GestureDetector(
       onTap: onTap,
@@ -719,9 +727,7 @@ class _WorkspaceCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isActive
-                ? const Color(0xFF5C35E8)
-                : Colors.transparent,
+            color: isActive ? const Color(0xFF5C35E8) : Colors.transparent,
             width: 2,
           ),
           boxShadow: [
@@ -783,7 +789,10 @@ class _WorkspaceCard extends StatelessWidget {
             // Active indicator
             if (isActive)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF5C35E8).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -886,9 +895,26 @@ class _EmptyWorkspaceCard extends StatelessWidget {
 // Settings Card
 // ═══════════════════════════════════════════════════════════════════════════════
 
-class _SettingsCard extends StatelessWidget {
-  static const Color _textDark = Color(0xFF111827);
-  static const Color _textLight = Color(0xFF6B7280);
+class _SettingsCard extends StatefulWidget {
+  @override
+  State<_SettingsCard> createState() => _SettingsCardState();
+}
+
+class _SettingsCardState extends State<_SettingsCard> {
+  String _version = '—';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() => _version = info.version);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -910,16 +936,37 @@ class _SettingsCard extends StatelessWidget {
             icon: Icons.info_outline_rounded,
             iconColor: const Color(0xFF5C35E8),
             title: 'App Version',
-            subtitle: '1.0.0',
+            subtitle: _version,
             isFirst: true,
           ),
           _Separator(),
-          _SettingsTile(
-            icon: Icons.auto_stories_rounded,
-            iconColor: const Color(0xFF0EA5E9),
-            title: 'About STUVIO',
-            subtitle: 'Notes • PDFs • Organize • Study Smart',
-            isLast: true,
+          InkWell(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PrivacyPolicyScreen(),
+              ),
+            ),
+            child: _SettingsTile(
+              icon: Icons.privacy_tip_rounded,
+              iconColor: const Color.fromARGB(255, 216, 79, 29),
+              title: 'Privacy Policy',
+              subtitle: '2026 - STUVIO',
+            ),
+          ),
+          _Separator(),
+          InkWell(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AboutAppScreen()),
+            ),
+            child: _SettingsTile(
+              icon: Icons.auto_stories_rounded,
+              iconColor: const Color(0xFF0EA5E9),
+              title: 'About STUVIO',
+              subtitle: 'Notes • PDFs • Organize • Study Smart',
+              isLast: true,
+            ),
           ),
         ],
       ),
