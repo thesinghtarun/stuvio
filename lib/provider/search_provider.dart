@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:studyvault/core/models/assignment.dart';
 import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/models/subject.dart';
@@ -26,6 +27,33 @@ class SearchResultItem {
 }
 
 class SearchProvider extends ChangeNotifier {
+  // ─── Ads ──────────────────────────────────────────────────────────────────
+  BannerAd? bannerAd;
+
+  void loadBannerAd() {
+    bannerAd?.dispose();
+
+    bannerAd = BannerAd(
+      size: AdSize.largeBanner,
+      adUnitId: 'ca-app-pub-1345393972469011/3049217586',
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          debugPrint("Banner Loaded");
+          notifyListeners();
+        },
+        onAdFailedToLoad: (ad, error) {
+          debugPrint(error.toString());
+          ad.dispose();
+          bannerAd = null;
+          notifyListeners();
+        },
+      ),
+    );
+
+    bannerAd!.load();
+  }
+
   final TextEditingController searchController = TextEditingController();
 
   Timer? _debounce;
@@ -273,6 +301,7 @@ class SearchProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    bannerAd?.dispose();
     _debounce?.cancel();
     searchController.dispose();
     super.dispose();

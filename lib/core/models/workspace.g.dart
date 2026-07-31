@@ -22,39 +22,54 @@ const WorkspaceSchema = CollectionSchema(
       name: r'color',
       type: IsarType.long,
     ),
-    r'createdAt': PropertySchema(
+    r'course': PropertySchema(
       id: 1,
+      name: r'course',
+      type: IsarType.string,
+    ),
+    r'createdAt': PropertySchema(
+      id: 2,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'icon': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'icon',
       type: IsarType.long,
     ),
     r'isPinned': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'isPinned',
       type: IsarType.bool,
     ),
     r'name': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'name',
       type: IsarType.string,
     ),
+    r'semester': PropertySchema(
+      id: 6,
+      name: r'semester',
+      type: IsarType.string,
+    ),
+    r'specialization': PropertySchema(
+      id: 7,
+      name: r'specialization',
+      type: IsarType.string,
+    ),
     r'type': PropertySchema(
-      id: 5,
+      id: 8,
       name: r'type',
       type: IsarType.byte,
       enumMap: _WorkspacetypeEnumValueMap,
     ),
     r'updatedAt': PropertySchema(
-      id: 6,
+      id: 9,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'userId': PropertySchema(
-      id: 7,
+      id: 10,
       name: r'userId',
       type: IsarType.long,
     )
@@ -106,7 +121,25 @@ int _workspaceEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.course;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.name.length * 3;
+  {
+    final value = object.semester;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.specialization;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   return bytesCount;
 }
 
@@ -117,13 +150,16 @@ void _workspaceSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeLong(offsets[0], object.color);
-  writer.writeDateTime(offsets[1], object.createdAt);
-  writer.writeLong(offsets[2], object.icon);
-  writer.writeBool(offsets[3], object.isPinned);
-  writer.writeString(offsets[4], object.name);
-  writer.writeByte(offsets[5], object.type.index);
-  writer.writeDateTime(offsets[6], object.updatedAt);
-  writer.writeLong(offsets[7], object.userId);
+  writer.writeString(offsets[1], object.course);
+  writer.writeDateTime(offsets[2], object.createdAt);
+  writer.writeLong(offsets[3], object.icon);
+  writer.writeBool(offsets[4], object.isPinned);
+  writer.writeString(offsets[5], object.name);
+  writer.writeString(offsets[6], object.semester);
+  writer.writeString(offsets[7], object.specialization);
+  writer.writeByte(offsets[8], object.type.index);
+  writer.writeDateTime(offsets[9], object.updatedAt);
+  writer.writeLong(offsets[10], object.userId);
 }
 
 Workspace _workspaceDeserialize(
@@ -134,15 +170,18 @@ Workspace _workspaceDeserialize(
 ) {
   final object = Workspace();
   object.color = reader.readLong(offsets[0]);
-  object.createdAt = reader.readDateTime(offsets[1]);
-  object.icon = reader.readLong(offsets[2]);
+  object.course = reader.readStringOrNull(offsets[1]);
+  object.createdAt = reader.readDateTime(offsets[2]);
+  object.icon = reader.readLong(offsets[3]);
   object.id = id;
-  object.isPinned = reader.readBool(offsets[3]);
-  object.name = reader.readString(offsets[4]);
-  object.type = _WorkspacetypeValueEnumMap[reader.readByteOrNull(offsets[5])] ??
+  object.isPinned = reader.readBool(offsets[4]);
+  object.name = reader.readString(offsets[5]);
+  object.semester = reader.readStringOrNull(offsets[6]);
+  object.specialization = reader.readStringOrNull(offsets[7]);
+  object.type = _WorkspacetypeValueEnumMap[reader.readByteOrNull(offsets[8])] ??
       WorkspaceType.college;
-  object.updatedAt = reader.readDateTime(offsets[6]);
-  object.userId = reader.readLong(offsets[7]);
+  object.updatedAt = reader.readDateTime(offsets[9]);
+  object.userId = reader.readLong(offsets[10]);
   return object;
 }
 
@@ -156,19 +195,25 @@ P _workspaceDeserializeProp<P>(
     case 0:
       return (reader.readLong(offset)) as P;
     case 1:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 2:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 3:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 4:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 5:
+      return (reader.readString(offset)) as P;
+    case 6:
+      return (reader.readStringOrNull(offset)) as P;
+    case 7:
+      return (reader.readStringOrNull(offset)) as P;
+    case 8:
       return (_WorkspacetypeValueEnumMap[reader.readByteOrNull(offset)] ??
           WorkspaceType.college) as P;
-    case 6:
+    case 9:
       return (reader.readDateTime(offset)) as P;
-    case 7:
+    case 10:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -477,6 +522,152 @@ extension WorkspaceQueryFilter
     });
   }
 
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> courseIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'course',
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> courseIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'course',
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> courseEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'course',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> courseGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'course',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> courseLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'course',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> courseBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'course',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> courseStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'course',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> courseEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'course',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> courseContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'course',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> courseMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'course',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> courseIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'course',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> courseIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'course',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Workspace, Workspace, QAfterFilterCondition> createdAtEqualTo(
       DateTime value) {
     return QueryBuilder.apply(this, (query) {
@@ -777,6 +968,308 @@ extension WorkspaceQueryFilter
     });
   }
 
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> semesterIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'semester',
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      semesterIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'semester',
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> semesterEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'semester',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> semesterGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'semester',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> semesterLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'semester',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> semesterBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'semester',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> semesterStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'semester',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> semesterEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'semester',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> semesterContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'semester',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> semesterMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'semester',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition> semesterIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'semester',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      semesterIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'semester',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      specializationIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'specialization',
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      specializationIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'specialization',
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      specializationEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'specialization',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      specializationGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'specialization',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      specializationLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'specialization',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      specializationBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'specialization',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      specializationStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'specialization',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      specializationEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'specialization',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      specializationContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'specialization',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      specializationMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'specialization',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      specializationIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'specialization',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterFilterCondition>
+      specializationIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'specialization',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Workspace, Workspace, QAfterFilterCondition> typeEqualTo(
       WorkspaceType value) {
     return QueryBuilder.apply(this, (query) {
@@ -957,6 +1450,18 @@ extension WorkspaceQuerySortBy on QueryBuilder<Workspace, Workspace, QSortBy> {
     });
   }
 
+  QueryBuilder<Workspace, Workspace, QAfterSortBy> sortByCourse() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'course', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterSortBy> sortByCourseDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'course', Sort.desc);
+    });
+  }
+
   QueryBuilder<Workspace, Workspace, QAfterSortBy> sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -1002,6 +1507,30 @@ extension WorkspaceQuerySortBy on QueryBuilder<Workspace, Workspace, QSortBy> {
   QueryBuilder<Workspace, Workspace, QAfterSortBy> sortByNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterSortBy> sortBySemester() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'semester', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterSortBy> sortBySemesterDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'semester', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterSortBy> sortBySpecialization() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'specialization', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterSortBy> sortBySpecializationDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'specialization', Sort.desc);
     });
   }
 
@@ -1053,6 +1582,18 @@ extension WorkspaceQuerySortThenBy
   QueryBuilder<Workspace, Workspace, QAfterSortBy> thenByColorDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'color', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterSortBy> thenByCourse() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'course', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterSortBy> thenByCourseDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'course', Sort.desc);
     });
   }
 
@@ -1116,6 +1657,30 @@ extension WorkspaceQuerySortThenBy
     });
   }
 
+  QueryBuilder<Workspace, Workspace, QAfterSortBy> thenBySemester() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'semester', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterSortBy> thenBySemesterDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'semester', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterSortBy> thenBySpecialization() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'specialization', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QAfterSortBy> thenBySpecializationDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'specialization', Sort.desc);
+    });
+  }
+
   QueryBuilder<Workspace, Workspace, QAfterSortBy> thenByType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'type', Sort.asc);
@@ -1161,6 +1726,13 @@ extension WorkspaceQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Workspace, Workspace, QDistinct> distinctByCourse(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'course', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Workspace, Workspace, QDistinct> distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
@@ -1183,6 +1755,21 @@ extension WorkspaceQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'name', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QDistinct> distinctBySemester(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'semester', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Workspace, Workspace, QDistinct> distinctBySpecialization(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'specialization',
+          caseSensitive: caseSensitive);
     });
   }
 
@@ -1219,6 +1806,12 @@ extension WorkspaceQueryProperty
     });
   }
 
+  QueryBuilder<Workspace, String?, QQueryOperations> courseProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'course');
+    });
+  }
+
   QueryBuilder<Workspace, DateTime, QQueryOperations> createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'createdAt');
@@ -1240,6 +1833,18 @@ extension WorkspaceQueryProperty
   QueryBuilder<Workspace, String, QQueryOperations> nameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'name');
+    });
+  }
+
+  QueryBuilder<Workspace, String?, QQueryOperations> semesterProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'semester');
+    });
+  }
+
+  QueryBuilder<Workspace, String?, QQueryOperations> specializationProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'specialization');
     });
   }
 

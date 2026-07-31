@@ -81,21 +81,151 @@ class WorkspacePg1 extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 5),
-              TextField(
-                controller: provider.courseController,
-                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+              DropdownButtonFormField<String>(
+                value: provider.selectedCourse,
+                hint: Text(
+                  "Select Course",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                onChanged: provider.selectCourse,
+                items: WorkspaceScreenProvider.popularCourses.map((c) {
+                  return DropdownMenuItem<String>(
+                    value: c,
+                    child: Text(
+                      c,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  );
+                }).toList(),
                 decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.all(20),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 15,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(5),
                   ),
-                  hintText: "Enter your Course",
-                  hintStyle: GoogleFonts.plusJakartaSans(
+                ),
+              ),
+              if (provider.selectedCourse == 'Other') ...[
+                const SizedBox(height: 15),
+                Text(
+                  "Enter Custom Course",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(height: 5),
+                TextField(
+                  controller: provider.courseController,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    hintText: "Enter your Course",
+                    hintStyle: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 15),
+              Text(
+                "Specialization",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: provider.selectedCourse == 'Not Applicable'
+                      ? Colors.grey
+                      : Colors.black,
+                ),
               ),
               const SizedBox(height: 5),
+              DropdownButtonFormField<String>(
+                value: provider.selectedCourse == 'Not Applicable'
+                    ? 'Not Applicable'
+                    : provider.selectedSpecialization,
+                hint: Text(
+                  "Select Specialization",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                onChanged: provider.selectedCourse == 'Not Applicable'
+                    ? null
+                    : provider.selectSpecialization,
+                items: WorkspaceScreenProvider.popularSpecializations.map((s) {
+                  return DropdownMenuItem<String>(
+                    value: s,
+
+                    child: Text(
+                      s,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.bold,
+                        color: provider.selectedCourse == 'Not Applicable'
+                            ? Colors.grey
+                            : Colors.black,
+                      ),
+                    ),
+                  );
+                }).toList(),
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 15,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  filled: provider.selectedCourse == 'Not Applicable',
+                  fillColor: provider.selectedCourse == 'Not Applicable'
+                      ? Colors.grey.shade100
+                      : null,
+                ),
+              ),
+              if (provider.selectedCourse != 'Not Applicable' &&
+                  provider.selectedSpecialization == 'Other') ...[
+                const SizedBox(height: 15),
+                Text(
+                  "Enter Custom Specialization",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                TextField(
+                  controller: provider.specializationController,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    hintText: "Enter your Specialization",
+                    hintStyle: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
             ],
           ),
         );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:studyvault/core/models/assignment.dart';
 import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
@@ -9,6 +10,33 @@ import 'package:studyvault/repositories/note_repository.dart';
 import 'package:studyvault/repositories/subject_repository.dart';
 
 class HomeProvider extends ChangeNotifier {
+  // ─── Ads ──────────────────────────────────────────────────────────────────
+  BannerAd? bannerAd;
+
+  void loadBannerAd() {
+    bannerAd?.dispose();
+
+    bannerAd = BannerAd(
+      size: AdSize.banner,
+      adUnitId: 'ca-app-pub-1345393972469011/3049217586',
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          debugPrint("Banner Loaded");
+          notifyListeners();
+        },
+        onAdFailedToLoad: (ad, error) {
+          debugPrint(error.toString());
+          ad.dispose();
+          bannerAd = null;
+          notifyListeners();
+        },
+      ),
+    );
+
+    bannerAd!.load();
+  }
+
   // ─── State ────────────────────────────────────────────────────────────────
   int? _currentWorkspaceId;
 
@@ -91,7 +119,7 @@ class HomeProvider extends ChangeNotifier {
     await _loadDeadlines(_currentWorkspaceId);
     await _loadUpcoming(_currentWorkspaceId);
     await _loadNotes(_currentWorkspaceId);
-    // await _loadPYQs(_currentWorkspaceId);
+    await _loadPYQs(_currentWorkspaceId);
   }
 
   // ─── Deadlines (due tomorrow) ─────────────────────────────────────────────
@@ -192,6 +220,25 @@ class HomeProvider extends ChangeNotifier {
     } finally {
       _isLoadingUpcoming = false;
       notifyListeners();
+    }
+  }
+
+  // ─── Mark Assignment Submitted ─────────────────────────────────────────────
+  Future<void> markAssignmentSubmitted(Assignment assignment) async {
+    try {
+      assignment.submitted = true;
+      assignment.status = AssignmentStatus.completed;
+      await AssignmentRepository.instance.updateAssignment(assignment);
+
+      _deadlines.removeWhere((a) => a.id == assignment.id);
+      _upcoming.removeWhere((a) => a.id == assignment.id);
+      notifyListeners();
+
+      Fluttertoast.showToast(msg: 'Assignment marked as submitted');
+      await reload();
+    } catch (e, st) {
+      AppLogger.error('HomeProvider.markAssignmentSubmitted', e, st);
+      Fluttertoast.showToast(msg: 'Failed to mark assignment as submitted');
     }
   }
 
@@ -389,5 +436,11 @@ class HomeProvider extends ChangeNotifier {
     if (diff == 1) return 'Due Tomorrow';
     if (diff < 0) return 'Overdue';
     return '$diff Days Left';
+  }
+
+  @override
+  void dispose() {
+    bannerAd?.dispose();
+    super.dispose();
   }
 }

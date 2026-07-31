@@ -31,7 +31,10 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    context.read<HomeProvider>().resetInboxPopup();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<HomeProvider>().resetInboxPopup();
+    });
 
     _controller = AnimationController(
       vsync: this,

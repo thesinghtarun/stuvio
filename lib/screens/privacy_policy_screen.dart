@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
@@ -294,7 +296,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                             ),
                             elevation: 0,
                           ),
-                          onPressed: () {},
+                          onPressed: () => contactSupport(),
                           icon: const Icon(Icons.mail_rounded, size: 18),
                           label: Text(
                             'Contact Support',
@@ -381,5 +383,19 @@ class PrivacyPolicyScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> contactSupport() async {
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: 'stuviobytarun@gmail.com',
+      queryParameters: {'subject': 'StudyVault Support'},
+    );
+
+    if (await canLaunchUrl(emailUri)) {
+      await launchUrl(emailUri, mode: LaunchMode.externalApplication);
+    } else {
+      Fluttertoast.showToast(msg: "No email found");
+    }
   }
 }

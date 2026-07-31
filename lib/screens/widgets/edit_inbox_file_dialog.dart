@@ -11,6 +11,7 @@ import 'package:studyvault/core/models/workspace.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
 import 'package:studyvault/provider/home_provider.dart';
 import 'package:studyvault/provider/inbox_provider.dart';
+import 'package:studyvault/provider/subject_provider.dart';
 import 'package:studyvault/repositories/subject_repository.dart';
 import 'package:studyvault/repositories/user_repository.dart';
 import 'package:studyvault/repositories/workspace_repository.dart';
@@ -149,13 +150,18 @@ class _EditInboxFileDialogState extends State<EditInboxFileDialog> {
             priority: _priority,
           );
 
-      if (success) {
-        context.read<HomeProvider>().reload();
+      if (success && mounted) {
+        try {
+          context.read<HomeProvider>().reload();
+        } catch (_) {}
+        try {
+          context.read<SubjectProvider>().reload();
+        } catch (_) {}
         Fluttertoast.showToast(
           msg:
               "Saved to ${_selectedWorkspace!.name} → ${_selectedSubject!.name}",
         );
-        if (mounted) Navigator.pop(context);
+        Navigator.pop(context);
       }
     } catch (e, st) {
       AppLogger.error('EditInboxFileDialog._saveFile', e, st);

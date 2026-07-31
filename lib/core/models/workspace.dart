@@ -29,6 +29,12 @@ class Workspace {
 
   bool isPinned = false;
 
+  String? course;
+
+  String? specialization;
+
+  String? semester;
+
   DateTime createdAt = DateTime.now();
 
   DateTime updatedAt = DateTime.now();

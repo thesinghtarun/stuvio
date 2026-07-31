@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:studyvault/core/database/isar_service.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
 import 'package:studyvault/provider/bottom_navigation_provider.dart';
+import 'package:studyvault/provider/inner_banner_provider.dart';
 import 'package:studyvault/provider/profile_provider.dart';
 import 'package:studyvault/provider/search_provider.dart';
 import 'package:studyvault/provider/subject_provider.dart';
@@ -19,6 +20,10 @@ import 'package:studyvault/provider/inbox_provider.dart';
 ///ca-app-pub-1345393972469011/3049217586
 ///App ID
 ///ca-app-pub-1345393972469011~7339248168
+///
+///NATIVE AD-------------------------------------------------------------------
+///APP ID:-ca-app-pub-1345393972469011~7339248168
+///UNIT ID:-ca-app-pub-1345393972469011/4027558652
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -63,6 +68,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider(create: (context) => SearchProvider()),
         ChangeNotifierProvider(create: (context) => ProfileProvider()),
         ChangeNotifierProvider(create: (context) => InboxProvider()),
+        ChangeNotifierProvider(create: (context) => InlineBannerProvider()),
       ],
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,

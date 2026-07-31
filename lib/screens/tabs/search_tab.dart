@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
-import 'package:studyvault/core/models/assignment.dart';
 import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
 import 'package:studyvault/core/utils/note_type_theme.dart';
@@ -20,6 +20,15 @@ class SearchTab extends StatefulWidget {
 
 class _SearchTabState extends State<SearchTab> {
   int? _lastWorkspaceId;
+
+  @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<SearchProvider>().loadBannerAd();
+    });
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,94 +52,119 @@ class _SearchTabState extends State<SearchTab> {
             return Scaffold(
               backgroundColor: const Color(0xFFF9FAFB),
               body: SafeArea(
-                child: Column(
+                child: Stack(
                   children: [
-                    const SizedBox(height: 20),
+                    Column(
+                      children: [
+                        const SizedBox(height: 20),
 
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 18),
+                            child: Text(
+                              "Search",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 30,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Search Input Header
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: const Color(0xFFE5E7EB),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: TextField(
+                              controller: provider.searchController,
+                              onChanged: provider.onSearchChanged,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF111827),
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "Search notes, PDFs, PYQs...",
+                                hintStyle: GoogleFonts.plusJakartaSans(
+                                  color: const Color(0xFF9CA3AF),
+                                  fontSize: 14,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.search_rounded,
+                                  color: Color(0xFF6750A4),
+                                ),
+                                suffixIcon:
+                                    provider.searchController.text.isNotEmpty ||
+                                        provider.selectedFilter !=
+                                            SearchFilter.all
+                                    ? IconButton(
+                                        onPressed: () {
+                                          AppLogger.click(
+                                            'SearchTab',
+                                            'Cleared search query and filters',
+                                          );
+                                          provider.searchController.clear();
+                                          provider.changeFilter(
+                                            SearchFilter.all,
+                                          );
+                                        },
+                                        icon: const Icon(
+                                          Icons.close_rounded,
+                                          color: Color(0xFF6B7280),
+                                        ),
+                                      )
+                                    : null,
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Main View Body
+                        Expanded(
+                          child: isSearchingMode
+                              ? const _SearchResultView()
+                              : const _SearchSuggestionView(),
+                        ),
+                      ],
+                    ),
                     Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        child: Text(
-                          "Search",
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 30,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      alignment: Alignment.bottomCenter,
+                      child: Consumer<SearchProvider>(
+                        builder: (context, provider, child) {
+                          if (provider.bannerAd == null) {
+                            return const SizedBox.shrink();
+                          }
+
+                          return SizedBox(
+                            width: provider.bannerAd!.size.width.toDouble(),
+                            height: provider.bannerAd!.size.height.toDouble(),
+                            child: AdWidget(ad: provider.bannerAd!),
+                          );
+                        },
                       ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Search Input Header
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: TextField(
-                          controller: provider.searchController,
-                          onChanged: provider.onSearchChanged,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF111827),
-                          ),
-                          decoration: InputDecoration(
-                            hintText: "Search notes, PDFs, PYQs...",
-                            hintStyle: GoogleFonts.plusJakartaSans(
-                              color: const Color(0xFF9CA3AF),
-                              fontSize: 14,
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.search_rounded,
-                              color: Color(0xFF6750A4),
-                            ),
-                            suffixIcon:
-                                provider.searchController.text.isNotEmpty ||
-                                    provider.selectedFilter != SearchFilter.all
-                                ? IconButton(
-                                    onPressed: () {
-                                      AppLogger.click(
-                                        'SearchTab',
-                                        'Cleared search query and filters',
-                                      );
-                                      provider.searchController.clear();
-                                      provider.changeFilter(SearchFilter.all);
-                                    },
-                                    icon: const Icon(
-                                      Icons.close_rounded,
-                                      color: Color(0xFF6B7280),
-                                    ),
-                                  )
-                                : null,
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Main View Body
-                    Expanded(
-                      child: isSearchingMode
-                          ? const _SearchResultView()
-                          : const _SearchSuggestionView(),
                     ),
                   ],
                 ),
@@ -430,19 +464,7 @@ class _SearchResultView extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF3F4F6),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.search_off_rounded,
-                      size: 48,
-                      color: Color(0xFF9CA3AF),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                  Image.asset("assets/images/no_search.png", height: 200),
                   Text(
                     "No files found",
                     style: GoogleFonts.plusJakartaSans(
@@ -583,9 +605,7 @@ class _SearchResultCard extends StatelessWidget {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => AssignmentDetailScreen(
-            assignment: item.assignment!,
-          ),
+          builder: (_) => AssignmentDetailScreen(assignment: item.assignment!),
         ),
       );
     } else if (item.isNote) {
@@ -599,10 +619,8 @@ class _SearchResultCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => NoteDetailScreen(
-              note: note,
-              subjectName: subjectName,
-            ),
+            builder: (_) =>
+                NoteDetailScreen(note: note, subjectName: subjectName),
           ),
         );
       }

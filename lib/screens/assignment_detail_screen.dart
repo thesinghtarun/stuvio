@@ -69,11 +69,18 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
       Note? targetNote;
       for (final n in notes) {
         if (n.filePath.isNotEmpty) {
-          if (n.title.toLowerCase().contains(
-                widget.assignment.title.toLowerCase(),
-              ) ||
-              targetNote == null) {
+          final isAttachedForAssignment =
+              n.type == NoteType.assignment ||
+              n.title.toLowerCase().contains(
+                    widget.assignment.title.toLowerCase(),
+                  ) ||
+              widget.assignment.title.toLowerCase().contains(
+                    n.title.toLowerCase(),
+                  );
+
+          if (isAttachedForAssignment) {
             targetNote = n;
+            break;
           }
         }
       }
@@ -82,7 +89,8 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
         PdfController? controller;
         if (targetNote != null && targetNote.filePath.isNotEmpty) {
           final file = File(targetNote.filePath);
-          if (await file.exists()) {
+          final ext = targetNote.filePath.split('.').last.toLowerCase();
+          if (ext == 'pdf' && await file.exists()) {
             try {
               controller = PdfController(
                 document: PdfDocument.openFile(targetNote.filePath),
@@ -102,7 +110,9 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
           _isLoadingNote = false;
         });
 
-        if (targetNote != null && targetNote.filePath.isNotEmpty) {
+        if (targetNote != null &&
+            targetNote.filePath.isNotEmpty &&
+            targetNote.filePath.toLowerCase().endsWith('.pdf')) {
           _renderPdfThumbnail(targetNote.filePath);
         }
       }
@@ -115,6 +125,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
   }
 
   Future<void> _renderPdfThumbnail(String filePath) async {
+    if (!filePath.toLowerCase().endsWith('.pdf')) return;
     final file = File(filePath);
     if (!await file.exists()) return;
 
@@ -225,6 +236,107 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     }
   }
 
+  Widget _buildAttachedMaterialPreview() {
+    if (_attachedNote == null || _attachedNote!.filePath.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Image.asset(
+            'assets/images/standard_pdf_img.png',
+            height: 120,
+            fit: BoxFit.contain,
+          ),
+        ),
+      );
+    }
+
+    final path = _attachedNote!.filePath;
+    final ext = path.split('.').last.toLowerCase();
+    final isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(ext);
+    final isPdf = ext == 'pdf';
+
+    if (isImage) {
+      final file = File(path);
+      if (file.existsSync()) {
+        return Image.file(file, fit: BoxFit.contain);
+      }
+    }
+
+    if (isPdf) {
+      if (_showThumbnail) {
+        if (_pdfController != null) {
+          return PdfView(
+            controller: _pdfController!,
+            scrollDirection: Axis.vertical,
+            physics: const NeverScrollableScrollPhysics(),
+          );
+        } else if (_pdfThumbnailBytes != null) {
+          return Image.memory(_pdfThumbnailBytes!, fit: BoxFit.contain);
+        } else if (_isLoadingThumbnail) {
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFF6750A4)),
+          );
+        }
+      }
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Image.asset(
+            'assets/images/standard_pdf_img.png',
+            height: 120,
+            fit: BoxFit.contain,
+          ),
+        ),
+      );
+    }
+
+    // Document / Other File Types (DOC, DOCX, TXT, PPT, XLSX)
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6750A4).withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.insert_drive_file_rounded,
+              color: Color(0xFF6750A4),
+              size: 44,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6750A4),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              ext.toUpperCase(),
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Tap to open file',
+            style: GoogleFonts.plusJakartaSans(
+              color: const Color(0xFF6B7280),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _saveAssignment() async {
     final title = _pdfNameController.text.trim();
     if (title.isEmpty) {
@@ -253,7 +365,10 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
         } catch (_) {
           // HomeProvider not in context (e.g. opened from SubjectMaterialListScreen)
         }
-        Fluttertoast.showToast(msg: 'Assignment updated successfully');
+        final msg = isCompleted
+            ? 'Marked as submitted'
+            : 'Assignment updated successfully';
+        Fluttertoast.showToast(msg: msg);
         Navigator.pop(context);
       }
     } catch (e, st) {
@@ -536,42 +651,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                               borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(20),
                               ),
-                              child: _showThumbnail
-                                  ? (_pdfController != null
-                                        ? PdfView(
-                                            controller: _pdfController!,
-                                            scrollDirection: Axis.vertical,
-                                            physics:
-                                                const NeverScrollableScrollPhysics(),
-                                          )
-                                        : (_pdfThumbnailBytes != null
-                                              ? Image.memory(
-                                                  _pdfThumbnailBytes!,
-                                                  fit: BoxFit.contain,
-                                                )
-                                              : (_isLoadingThumbnail
-                                                    ? const Center(
-                                                        child:
-                                                            CircularProgressIndicator(
-                                                              color: Color(
-                                                                0xFF6750A4,
-                                                              ),
-                                                            ),
-                                                      )
-                                                    : Image.asset(
-                                                        'assets/images/standard_pdf_img.png',
-                                                        fit: BoxFit.contain,
-                                                      ))))
-                                  : Center(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(20.0),
-                                        child: Image.asset(
-                                          'assets/images/standard_pdf_img.png',
-                                          height: 120,
-                                          fit: BoxFit.contain,
-                                        ),
-                                      ),
-                                    ),
+                              child: _buildAttachedMaterialPreview(),
                             ),
                           ),
                         ),

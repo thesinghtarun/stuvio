@@ -35,6 +35,9 @@ class WorkspaceRepository {
     int icon = 0xe318,
     int color = 0xFF6750A4,
     bool isPinned = false,
+    String? course,
+    String? specialization,
+    String? semester,
   }) async {
     final workspace = Workspace()
       ..userId = userId
@@ -43,6 +46,9 @@ class WorkspaceRepository {
       ..icon = icon
       ..color = color
       ..isPinned = isPinned
+      ..course = course
+      ..specialization = specialization
+      ..semester = semester
       ..createdAt = DateTime.now()
       ..updatedAt = DateTime.now();
 

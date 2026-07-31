@@ -782,6 +782,32 @@ class _WorkspaceCard extends StatelessWidget {
                       ],
                     ],
                   ),
+                  if ((workspace.course != null && workspace.course!.isNotEmpty) ||
+                      (workspace.specialization != null && workspace.specialization!.isNotEmpty) ||
+                      (workspace.semester != null && workspace.semester!.isNotEmpty)) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (workspace.course != null && workspace.course!.isNotEmpty)
+                          _DetailBadge(
+                            label: workspace.course!,
+                            icon: Icons.school_outlined,
+                          ),
+                        if (workspace.specialization != null && workspace.specialization!.isNotEmpty)
+                          _DetailBadge(
+                            label: workspace.specialization!,
+                            icon: Icons.psychology_outlined,
+                          ),
+                        if (workspace.semester != null && workspace.semester!.isNotEmpty)
+                          _DetailBadge(
+                            label: workspace.semester!,
+                            icon: Icons.calendar_month_outlined,
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -814,6 +840,50 @@ class _WorkspaceCard extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DetailBadge extends StatelessWidget {
+  const _DetailBadge({required this.label, required this.icon});
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFF5C35E8).withOpacity(0.06),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: const Color(0xFF5C35E8).withOpacity(0.15),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 11,
+            color: const Color(0xFF5C35E8),
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF5C35E8),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

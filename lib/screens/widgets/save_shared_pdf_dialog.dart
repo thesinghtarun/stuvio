@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:studyvault/core/models/assignment.dart';
 import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/models/subject.dart';
 import 'package:studyvault/core/models/user.dart';
 import 'package:studyvault/core/models/workspace.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
+import 'package:studyvault/provider/home_provider.dart';
+import 'package:studyvault/provider/subject_provider.dart';
 import 'package:studyvault/repositories/assignment_repository.dart';
 import 'package:studyvault/repositories/note_repository.dart';
 import 'package:studyvault/repositories/subject_repository.dart';
@@ -269,6 +272,15 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
           'IMPORT_SUCCESS',
           'Created Note ID ${note.id} under Subject: ${_selectedSubject!.name}',
         );
+      }
+
+      if (mounted) {
+        try {
+          context.read<HomeProvider>().reload();
+        } catch (_) {}
+        try {
+          context.read<SubjectProvider>().reload();
+        } catch (_) {}
       }
 
       Fluttertoast.showToast(

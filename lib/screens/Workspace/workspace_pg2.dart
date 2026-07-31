@@ -21,8 +21,8 @@ class WorkspacePg2 extends StatelessWidget {
           spacing: 14,
           runSpacing: 14,
           children: List.generate(
-            8,
-            (index) => SemesterWidget(semester: "${index + 1}", index: index),
+            9,
+            (index) => SemesterWidget(semester: index == 8 ? "N/A" : "${index + 1}", index: index),
           ),
         ),
       ],
@@ -74,7 +74,7 @@ class SemesterWidget extends StatelessWidget {
               child: Text(
                 semester,
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: semester == "N/A" ? 16 : 20,
                   fontWeight: FontWeight.w700,
                   color: isSelected ? Colors.white : const Color(0xff4A5568),
                 ),

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:studyvault/core/models/assignment.dart';
@@ -34,10 +35,13 @@ class InboxProvider extends ChangeNotifier {
     } catch (e, st) {
       AppLogger.error('InboxProvider.fetchInboxItems', e, st);
     } finally {
-      _isLoading = false;
-      notifyListeners();
-      onInboxLoaded?.call();
-    }
+  _isLoading = false;
+  notifyListeners();
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    onInboxLoaded?.call();
+  });
+}
   }
 
   /// Add a file (from shared intent or picker) into Inbox

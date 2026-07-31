@@ -18,7 +18,10 @@ class WorkspaceScreenProvider extends ChangeNotifier {
 
   void onPageChanged(int index) {
     currentPage = index;
-    AppLogger.click('DetailsPage.onPageChanged', 'Switched to page index $index');
+    AppLogger.click(
+      'DetailsPage.onPageChanged',
+      'Switched to page index $index',
+    );
     notifyListeners();
   }
 
@@ -29,6 +32,9 @@ class WorkspaceScreenProvider extends ChangeNotifier {
     nameController.clear();
     workspaceController.clear();
     courseController.clear();
+    specializationController.clear();
+    selectedCourse = null;
+    selectedSpecialization = null;
     selectedSemester = -1;
     selectSubjects.clear();
     selectedSubjects.clear();
@@ -46,21 +52,93 @@ class WorkspaceScreenProvider extends ChangeNotifier {
         'Software Engineering',
         'Discrete Math',
       ]);
-    AppLogger.action('WorkspaceScreenProvider', 'Reset. fromProfile=$fromProfile');
+    AppLogger.action(
+      'WorkspaceScreenProvider',
+      'Reset. fromProfile=$fromProfile',
+    );
     notifyListeners();
   }
 
   ///--------------------------------------------Page1
+  static const List<String> popularCourses = [
+    'B.Arch',
+    'B.Com',
+    'B.Sc',
+    'B.Tech',
+    'BBA',
+    'BCA',
+    'M.Com',
+    'M.Sc',
+    'M.Tech',
+    'MBA',
+    'MCA',
+    'Other',
+    'Not Applicable',
+  ];
+
+  static const List<String> popularSpecializations = [
+    'AI/ML',
+    'Business Analytics',
+    'Civil Engineering',
+    'Computer Applications & IT',
+    'CSE',
+    'Data Science',
+    'Electrical & Electronics',
+    'Finance & Accounting',
+    'Information Technology',
+    'Mechanical Engineering',
+    'Other',
+    'Not Applicable',
+  ];
+
+  String? selectedCourse;
+  String? selectedSpecialization;
+
   final TextEditingController nameController = TextEditingController();
   final TextEditingController workspaceController = TextEditingController();
   final TextEditingController courseController = TextEditingController();
+  final TextEditingController specializationController =
+      TextEditingController();
+
+  void selectCourse(String? value) {
+    selectedCourse = value;
+    if (value == 'Not Applicable') {
+      selectedSpecialization = 'Not Applicable';
+      specializationController.clear();
+      courseController.text = 'Not Applicable';
+    } else {
+      if (selectedSpecialization == 'Not Applicable') {
+        selectedSpecialization = null;
+      }
+      if (value == 'Other') {
+        courseController.clear();
+      } else if (value != null) {
+        courseController.text = value;
+      }
+    }
+    notifyListeners();
+  }
+
+  void selectSpecialization(String? value) {
+    selectedSpecialization = value;
+    if (value == 'Other') {
+      specializationController.clear();
+    } else if (value != null) {
+      specializationController.text = value;
+    }
+    notifyListeners();
+  }
 
   ///--------------------------------------------Page2
-  int selectedSemester = -1; // 0 = Semester 1, 4 = Semester 5
+  int selectedSemester =
+      -1; // 0 = Semester 1, 7 = Semester 8, 8 = Not Applicable
 
   void selectSemester(int index) {
     selectedSemester = index;
-    AppLogger.click('DetailsPage.selectSemester', 'Selected Semester ${index + 1}');
+    AppLogger.click(
+      'DetailsPage.selectSemester',
+      'Selected Semester ${index + 1}',
+    );
     notifyListeners();
   }
 
@@ -84,7 +162,10 @@ class WorkspaceScreenProvider extends ChangeNotifier {
 
   void toggleCustomSubjectField() {
     showCustomSubjectField = !showCustomSubjectField;
-    AppLogger.click('DetailsPage.toggleCustomSubjectField', 'Custom subject field visible: $showCustomSubjectField');
+    AppLogger.click(
+      'DetailsPage.toggleCustomSubjectField',
+      'Custom subject field visible: $showCustomSubjectField',
+    );
     notifyListeners();
   }
 
@@ -92,11 +173,17 @@ class WorkspaceScreenProvider extends ChangeNotifier {
     if (selectSubjects.contains(index)) {
       selectSubjects.remove(index);
       selectedSubjects.remove(subjects[index]);
-      AppLogger.click('DetailsPage.toggleSubject', 'Deselected subject: ${subjects[index]}');
+      AppLogger.click(
+        'DetailsPage.toggleSubject',
+        'Deselected subject: ${subjects[index]}',
+      );
     } else {
       selectSubjects.add(index);
       selectedSubjects.add(subjects[index]);
-      AppLogger.click('DetailsPage.toggleSubject', 'Selected subject: ${subjects[index]}');
+      AppLogger.click(
+        'DetailsPage.toggleSubject',
+        'Selected subject: ${subjects[index]}',
+      );
     }
 
     notifyListeners();
@@ -104,7 +191,10 @@ class WorkspaceScreenProvider extends ChangeNotifier {
 
   void addCustomSubject() {
     final text = subjectController.text.trim();
-    AppLogger.click('DetailsPage.addCustomSubject', 'Attempting to add custom subject: "$text"');
+    AppLogger.click(
+      'DetailsPage.addCustomSubject',
+      'Attempting to add custom subject: "$text"',
+    );
 
     if (text.isEmpty) {
       Fluttertoast.showToast(msg: "Please enter a subject name");
@@ -129,14 +219,19 @@ class WorkspaceScreenProvider extends ChangeNotifier {
     subjectController.clear();
     showCustomSubjectField = false;
 
-    AppLogger.info('DetailsProvider', 'Added custom subject "$text" successfully.');
+    AppLogger.info(
+      'DetailsProvider',
+      'Added custom subject "$text" successfully.',
+    );
     notifyListeners();
   }
 
-
   Future<void> nextPage(BuildContext context) async {
     final workspaceProvider = context.read<WorkspaceCounterProvider>();
-    AppLogger.click('DetailsPage.nextPageButton', 'Triggered on Page $currentPage');
+    AppLogger.click(
+      'DetailsPage.nextPageButton',
+      'Triggered on Page $currentPage',
+    );
     switch (currentPage) {
       case 0:
         // Skip name validation when launched from profile (user already exists)
@@ -145,14 +240,53 @@ class WorkspaceScreenProvider extends ChangeNotifier {
           return;
         }
 
-        if (workspaceController.text.trim().isEmpty) {
+        final workspaceNameInput = workspaceController.text.trim();
+        if (workspaceNameInput.isEmpty) {
           Fluttertoast.showToast(msg: "Please enter your workspace");
           return;
         }
 
-        if (courseController.text.trim().isEmpty) {
-          Fluttertoast.showToast(msg: "Please enter your branch/course");
+        // 1. Check if workspace name is already in use by the user
+        final existingUser = await UserRepository.instance.getUser();
+        if (existingUser != null) {
+          final workspaces = await WorkspaceRepository.instance
+              .getWorkspacesForUser(existingUser.id);
+          final isDuplicate = workspaces.any(
+            (w) => w.name.toLowerCase() == workspaceNameInput.toLowerCase(),
+          );
+          if (isDuplicate) {
+            Fluttertoast.showToast(
+              msg:
+                  "You are already using the workspace name '$workspaceNameInput'. Please try a different one for your clarity in the future.",
+              toastLength: Toast.LENGTH_LONG,
+            );
+            return;
+          }
+        }
+
+        // 2. Validate course selection/input
+        if (selectedCourse == null) {
+          Fluttertoast.showToast(msg: "Please select your course");
           return;
+        }
+        if (selectedCourse == 'Other' && courseController.text.trim().isEmpty) {
+          Fluttertoast.showToast(msg: "Please enter your custom course");
+          return;
+        }
+
+        // 3. Validate specialization selection/input
+        if (selectedCourse != 'Not Applicable') {
+          if (selectedSpecialization == null) {
+            Fluttertoast.showToast(msg: "Please select your specialization");
+            return;
+          }
+          if (selectedSpecialization == 'Other' &&
+              specializationController.text.trim().isEmpty) {
+            Fluttertoast.showToast(
+              msg: "Please enter your custom specialization",
+            );
+            return;
+          }
         }
 
         pageController.nextPage(
@@ -203,10 +337,33 @@ class WorkspaceScreenProvider extends ChangeNotifier {
         }
 
         if (user != null) {
+          final courseValue = selectedCourse == 'Not Applicable'
+              ? 'Not Applicable'
+              : (selectedCourse == 'Other'
+                    ? courseController.text.trim()
+                    : selectedCourse);
+
+          final specializationValue =
+              (selectedCourse == 'Not Applicable' ||
+                  selectedSpecialization == 'Not Applicable')
+              ? 'Not Applicable'
+              : (selectedSpecialization == 'Other'
+                    ? specializationController.text.trim()
+                    : selectedSpecialization);
+
+          final semesterValue = selectedSemester == 8
+              ? 'Not Applicable'
+              : (selectedSemester >= 0 && selectedSemester <= 7
+                    ? 'Semester ${selectedSemester + 1}'
+                    : 'Not Applicable');
+
           // Save workspace for user in Isar
           final workspace = await WorkspaceRepository.instance.createWorkspace(
             userId: user.id,
             name: workspaceName,
+            course: courseValue,
+            specialization: specializationValue,
+            semester: semesterValue,
           );
 
           // Update active workspace link in user
