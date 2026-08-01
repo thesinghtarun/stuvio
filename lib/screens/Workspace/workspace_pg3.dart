@@ -82,13 +82,21 @@ class WorkspacePg3 extends StatelessWidget {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(18),
                         ),
-                        hintText: "Subject Name",
+                        hintText: "Click + to add",
+                        labelText: "Subject Name",
+                        labelStyle: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.bold,
+                        ),
                         hintStyle: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.bold,
                         ),
                         suffixIcon: IconButton(
                           onPressed: () => provider.addCustomSubject(),
-                          icon: Icon(Icons.add),
+                          icon: Icon(
+                            Icons.add_circle_rounded,
+                            size: 30,
+                            color: Color(0xFF5C35E8),
+                          ),
                         ),
                       ),
                     ),
@@ -121,10 +129,10 @@ class WorkspacePg3 extends StatelessWidget {
                   ),
                   SizedBox(height: 15),
 
-                  InkWell(
-                    onTap: () => print("LISTSUB: ${provider.selectedSubjects}"),
-                    child: Text("data"),
-                  ),
+                  // InkWell(
+                  //   onTap: () => print("LISTSUB: ${provider.selectedSubjects}"),
+                  //   child: Text("data"),
+                  // ),
                 ],
               );
             },

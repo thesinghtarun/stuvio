@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:isar/isar.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:studyvault/core/models/note.dart';
@@ -32,191 +34,527 @@ class SubjectsTab extends StatelessWidget {
               );
             }
 
-            if (provider.subjects.isEmpty) {
-              return Scaffold(
-                backgroundColor: const Color(0xffF8F9FD),
-                body: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.menu_book_rounded,
-                        size: 70,
-                        color: Colors.grey.shade400,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        "No Subjects Found",
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Create your first subject",
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
+            // if (provider.subjects.isEmpty) {
+            //   return Scaffold(
+            //     backgroundColor: const Color(0xffF8F9FD),
+            //     body: Center(
+            //       child: Column(
+            //         mainAxisAlignment: MainAxisAlignment.center,
+            //         children: [
+            //           Icon(
+            //             Icons.menu_book_rounded,
+            //             size: 70,
+            //             color: Colors.grey.shade400,
+            //           ),
+            //           const SizedBox(height: 16),
+            //           Text(
+            //             "No Subjects Found",
+            //             style: GoogleFonts.plusJakartaSans(
+            //               fontSize: 22,
+            //               fontWeight: FontWeight.bold,
+            //             ),
+            //           ),
+            //           const SizedBox(height: 8),
+            //           Text(
+            //             "Create your first subject",
+            //             style: GoogleFonts.plusJakartaSans(
+            //               color: Colors.grey.shade600,
+            //             ),
+            //           ),
+            //           SizedBox(height: 10),
+            //           _AddSubjectCard(),
+            //         ],
+            //       ),
+            //     ),
+            //   );
+            // }
 
             return Scaffold(
               backgroundColor: const Color(0xffF8F9FD),
-              body: SafeArea(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 20),
+              body: Stack(
+                children: [
+                  SafeArea(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 20),
 
-                    //-----------------------------------------
-                    // TITLE
-                    //-----------------------------------------
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: [
-                          Text(
-                            "Subjects",
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 30,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    //-----------------------------------------
-                    // PAGE VIEW
-                    //-----------------------------------------
-                    SizedBox(
-                      height: 180,
-                      child: PageView.builder(
-                        controller: provider.pageController,
-                        itemCount: provider.subjects.length,
-                        onPageChanged: provider.onPageChanged,
-                        itemBuilder: (context, index) {
-                          final subject = provider.subjects[index];
-
-                          final selected = index == provider.selectedIndex;
-
-                          return AnimatedScale(
-                            scale: selected ? 1 : .90,
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOut,
-                            child: AnimatedOpacity(
-                              opacity: selected ? 1 : .45,
-                              duration: const Duration(milliseconds: 300),
-                              child: _SubjectCard(
-                                subject: subject,
-                                selected: selected,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    SmoothPageIndicator(
-                      controller: provider.pageController,
-                      count: provider.subjects.length,
-                      effect: ExpandingDotsEffect(
-                        expansionFactor: 3,
-                        spacing: 8,
-                        radius: 20,
-                        dotHeight: 8,
-                        dotWidth: 8,
-                        activeDotColor: Colors.deepPurple,
-                        dotColor: Colors.grey.shade300,
-                      ),
-                    ),
-
-                    const SizedBox(height: 25),
-
-                    //-----------------------------------------
-                    // EVERYTHING BELOW ANIMATES
-                    //-----------------------------------------
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 350),
-                        switchInCurve: Curves.easeOut,
-                        switchOutCurve: Curves.easeIn,
-                        child: SingleChildScrollView(
-                          key: ValueKey(provider.selectedSubject?.id ?? 0),
+                        //-----------------------------------------
+                        // TITLE
+                        //-----------------------------------------
+                        Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
                               Text(
-                                provider.selectedSubject?.name ?? "",
+                                "Subjects",
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 24,
+                                  fontSize: 30,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-
-                              const SizedBox(height: 6),
-
-                              Text(
-                                "Everything related to this subject",
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              //-----------------------------------------
-                              // STATS GRID
-                              //-----------------------------------------
-                              _StatsGrid(
-                                subject: provider.selectedSubject,
-                                notes: provider.notesCount,
-                                assignments: provider.assignmentCount,
-                                pyqs: provider.pyqCount,
-                                labs: provider.labCount,
-                              ),
-
-                              const SizedBox(height: 30),
-
-                              Row(
-                                children: [
-                                  Text(
-                                    "Recently Added",
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              //-----------------------------------------
-                              // RECENT FILES
-                              //-----------------------------------------
-                              _RecentFilesSection(provider: provider),
-
-                              const SizedBox(height: 30),
                             ],
                           ),
                         ),
+
+                        const SizedBox(height: 20),
+
+                        //-----------------------------------------
+                        // PAGE VIEW
+                        //-----------------------------------------
+                        SizedBox(
+                          height: 180,
+                          child: PageView.builder(
+                            controller: provider.pageController,
+                            itemCount: provider.subjects.length + 1,
+                            onPageChanged: provider.onPageChanged,
+                            itemBuilder: (context, index) {
+                              if (index == provider.subjects.length) {
+                                return const _AddSubjectCard();
+                              }
+
+                              final subject = provider.subjects[index];
+                              final selected = index == provider.selectedIndex;
+
+                              return AnimatedScale(
+                                scale: selected ? 1 : .90,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeOut,
+                                child: AnimatedOpacity(
+                                  opacity: selected ? 1 : .45,
+                                  duration: const Duration(milliseconds: 300),
+                                  child: LongPressDraggable<Subject>(
+                                    data: subject,
+
+                                    dragAnchorStrategy: childDragAnchorStrategy,
+                                    feedbackOffset: const Offset(0, -40),
+
+                                    onDragStarted: () {
+                                      HapticFeedback.mediumImpact();
+                                      provider.startDragging();
+                                    },
+
+                                    onDragEnd: (_) {
+                                      provider.stopDragging();
+                                    },
+
+                                    feedback: Material(
+                                      color: Colors.transparent,
+                                      elevation: 20,
+                                      child: Transform.scale(
+                                        scale: .9,
+                                        child: SizedBox(
+                                          width: 280,
+                                          height: 180, // <-- ADD THIS
+                                          child: _SubjectCard(
+                                            subject: subject,
+                                            selected: true,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    childWhenDragging: Opacity(
+                                      opacity: .25,
+                                      child: _SubjectCard(
+                                        subject: subject,
+                                        selected: selected,
+                                      ),
+                                    ),
+
+                                    child: _SubjectCard(
+                                      subject: subject,
+                                      selected: selected,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        SmoothPageIndicator(
+                          controller: provider.pageController,
+                          count: provider.subjects.length + 1,
+                          effect: ExpandingDotsEffect(
+                            expansionFactor: 3,
+                            spacing: 8,
+                            radius: 20,
+                            dotHeight: 8,
+                            dotWidth: 8,
+                            activeDotColor: Colors.deepPurple,
+                            dotColor: Colors.grey.shade300,
+                          ),
+                        ),
+
+                        const SizedBox(height: 25),
+
+                        //-----------------------------------------
+                        // EVERYTHING BELOW ANIMATES
+                        //-----------------------------------------
+                        Expanded(
+                          child:
+                              provider.selectedIndex == provider.subjects.length
+                              ? const SizedBox()
+                              : AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 350),
+                                  switchInCurve: Curves.easeOut,
+                                  switchOutCurve: Curves.easeIn,
+                                  child: SingleChildScrollView(
+                                    key: ValueKey(
+                                      provider.selectedSubject?.id ?? 0,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          provider.selectedSubject?.name ?? "",
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+
+                                        const SizedBox(height: 6),
+
+                                        Text(
+                                          "Everything related to this subject",
+                                          style: GoogleFonts.plusJakartaSans(
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+
+                                        const SizedBox(height: 24),
+
+                                        //-----------------------------------------
+                                        // STATS GRID
+                                        //-----------------------------------------
+                                        _StatsGrid(
+                                          subject: provider.selectedSubject,
+                                          notes: provider.notesCount,
+                                          assignments: provider.assignmentCount,
+                                          pyqs: provider.pyqCount,
+                                          labs: provider.labCount,
+                                        ),
+
+                                        const SizedBox(height: 30),
+
+                                        Row(
+                                          children: [
+                                            Text(
+                                              "Recently Added",
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+
+                                        const SizedBox(height: 16),
+
+                                        //-----------------------------------------
+                                        // RECENT FILES
+                                        //-----------------------------------------
+                                        _RecentFilesSection(provider: provider),
+
+                                        const SizedBox(height: 30),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  //Delete bar to delete subject---------------------------------
+                  Consumer<SubjectProvider>(
+                    builder: (_, provider, __) {
+                      return IgnorePointer(
+                        ignoring: !provider.dragging,
+                        child: AnimatedSlide(
+                          duration: const Duration(milliseconds: 250),
+                          offset: provider.dragging
+                              ? Offset.zero
+                              : const Offset(0, -1.5),
+
+                          child: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 250),
+                            opacity: provider.dragging ? 1 : 0,
+                            child: SafeArea(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+
+                                child: DragTarget<Subject>(
+                                  onWillAcceptWithDetails: (_) {
+                                    provider.enterDelete();
+                                    return true;
+                                  },
+
+                                  onLeave: (_) {
+                                    provider.leaveDelete();
+                                  },
+
+                                  onAcceptWithDetails: (details) {
+                                    provider.stopDragging();
+
+                                    showDeleteDialog(context, details.data.id);
+                                  },
+
+                                  builder: (_, __, ___) {
+                                    return AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
+                                      height: 80,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(22),
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: provider.overDelete
+                                              ? [
+                                                  Colors.red.shade700,
+                                                  Colors.red.shade500,
+                                                  Colors.red.shade300,
+                                                  Colors.red.withOpacity(.0),
+                                                ]
+                                              : [
+                                                  Colors.redAccent,
+                                                  Colors.redAccent.withOpacity(
+                                                    .85,
+                                                  ),
+                                                  Colors.redAccent.withOpacity(
+                                                    .45,
+                                                  ),
+                                                  Colors.redAccent.withOpacity(
+                                                    0,
+                                                  ),
+                                                ],
+                                          stops: const [0.0, 0.35, 0.7, 1.0],
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.delete_rounded,
+                                            color: Colors.white,
+                                            size: 30,
+                                          ),
+                                          SizedBox(width: 12),
+                                          Text(
+                                            "Drop here to delete",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> showDeleteDialog(BuildContext context, Id id) async {
+    final provider = context.read<SubjectProvider>();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text("Delete Subject"),
+          content: const Text(
+            "This subject and all its notes will be permanently deleted.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false);
+              },
+              child: const Text("Cancel"),
+            ),
+
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () {
+                Navigator.pop(context, true);
+              },
+              child: const Text("Delete"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == true) {
+      await provider.deleteSubject(id);
+    }
+  }
+}
+
+class _AddSubjectCard extends StatelessWidget {
+  const _AddSubjectCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(28),
+      onTap: () {
+        _showAddSubjectDialog(context);
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: Colors.deepPurple.withOpacity(.25),
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.05),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: Colors.deepPurple.withOpacity(.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.add_rounded,
+                size: 40,
+                color: Colors.deepPurple,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              "Add Subject",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "Create a new subject",
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.grey,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAddSubjectDialog(BuildContext context) async {
+    final controller = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (_) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Add Subject",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    hintText: "Subject Name",
+                    prefixIcon: const Icon(Icons.menu_book_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Cancel"),
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () {
+                          final name = controller.text.trim();
+
+                          if (name.isEmpty) return;
+
+                          Navigator.of(context).pop();
+
+                          Future.microtask(() {
+                            context.read<SubjectProvider>().addSubject(name);
+                          });
+                        },
+                        child: const Text("Save"),
                       ),
                     ),
                   ],
                 ),
-              ),
-            );
-          },
+              ],
+            ),
+          ),
         );
       },
     );
@@ -291,7 +629,7 @@ class _SubjectCard extends StatelessWidget {
                   ),
                 ),
 
-                const Spacer(),
+                Flexible(child: SizedBox()),
 
                 Text(
                   subject.name,

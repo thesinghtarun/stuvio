@@ -28,12 +28,56 @@ class SubjectProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
 
+  //To delete subject by dragging-------------------------------------------------------------------------
+  bool _dragging = false;
+  bool _overDelete = false;
+
+  bool get dragging => _dragging;
+  bool get overDelete => _overDelete;
+
+  void startDragging() {
+    _dragging = true;
+    notifyListeners();
+  }
+
+  void stopDragging() {
+    _dragging = false;
+    _overDelete = false;
+    notifyListeners();
+  }
+
+  void enterDelete() {
+    if (_overDelete) return;
+    _overDelete = true;
+    notifyListeners();
+  }
+
+  void leaveDelete() {
+    if (!_overDelete) return;
+    _overDelete = false;
+    notifyListeners();
+  }
+
+  //-------------------------------------------------------------------------------------
+
   List<Subject> get subjects => _subjects;
 
   int get selectedIndex => _selectedIndex;
 
-  Subject? get selectedSubject =>
-      _subjects.isEmpty ? null : _subjects[_selectedIndex];
+  // Subject? get selectedSubject =>
+  //     _subjects.isEmpty ? null : _subjects[_selectedIndex];
+
+  Subject? get selectedSubject {
+    if (_subjects.isEmpty) return null;
+
+    if (_selectedIndex >= _subjects.length) {
+      return null;
+    }
+
+    return _subjects[_selectedIndex];
+  }
+
+  //----------------------------
 
   List<Note> get recentFiles => _recentFiles;
 
@@ -86,12 +130,56 @@ class SubjectProvider extends ChangeNotifier {
     }
   }
 
+  // Future<void> onPageChanged(int index) async {
+  //   if (index == _selectedIndex) return;
+
+  //   _selectedIndex = index;
+
+  //   notifyListeners();
+
+  //   await _loadSubjectData(_subjects[index]);
+  // }
+
+  Future<void> deleteSubject(int subjectId) async {
+    await SubjectRepository.instance.deleteSubject(subjectId);
+
+    await reload();
+
+    if (_subjects.isEmpty) {
+      _selectedIndex = 0;
+      return;
+    }
+
+    if (_selectedIndex >= _subjects.length) {
+      _selectedIndex = _subjects.length - 1;
+    }
+
+    notifyListeners();
+
+    pageController.animateToPage(
+      _selectedIndex,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
   Future<void> onPageChanged(int index) async {
     if (index == _selectedIndex) return;
 
     _selectedIndex = index;
-
     notifyListeners();
+
+    // Last page is the "+ Add Subject" card.
+    if (index >= _subjects.length) {
+      _recentFiles = [];
+      _notesCount = 0;
+      _assignmentCount = 0;
+      _pyqCount = 0;
+      _labCount = 0;
+
+      notifyListeners();
+      return;
+    }
 
     await _loadSubjectData(_subjects[index]);
   }
@@ -123,7 +211,6 @@ class SubjectProvider extends ChangeNotifier {
       notes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       _recentFiles = notes.take(3).toList();
-      
     } catch (e, st) {
       AppLogger.error("SubjectProvider.loadSubjectData", e, st);
 
@@ -146,14 +233,42 @@ class SubjectProvider extends ChangeNotifier {
     );
 
     if (_subjects.isNotEmpty) {
+      // if (_selectedIndex >= _subjects.length) {
+      //   _selectedIndex = 0;
+      // }
+
       if (_selectedIndex >= _subjects.length) {
-        _selectedIndex = 0;
+        _selectedIndex = _subjects.isEmpty ? 0 : _subjects.length - 1;
       }
 
       await _loadSubjectData(_subjects[_selectedIndex]);
     }
 
     notifyListeners();
+  }
+
+  Future<void> addSubject(String name) async {
+    if (_workspaceId == null) return;
+
+    await SubjectRepository.instance.createSubject(
+      workspaceId: _workspaceId!,
+      name: name,
+      color: Colors.deepPurple.value,
+      icon: Icons.menu_book_rounded.codePoint,
+    );
+
+    await reload();
+
+    // Select the newly added subject (last real subject)
+    _selectedIndex = _subjects.length - 1;
+
+    notifyListeners();
+
+    pageController.animateToPage(
+      _selectedIndex,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOut,
+    );
   }
 
   @override

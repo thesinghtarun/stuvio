@@ -22,11 +22,11 @@ class HomeProvider extends ChangeNotifier {
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          debugPrint("Banner Loaded");
+          debugPrint("Banner Loaded home tab");
           notifyListeners();
         },
         onAdFailedToLoad: (ad, error) {
-          debugPrint(error.toString());
+          debugPrint("Banner err home tab: ${error.toString()}");
           ad.dispose();
           bannerAd = null;
           notifyListeners();

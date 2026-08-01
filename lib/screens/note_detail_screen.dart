@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
 import 'package:studyvault/core/utils/note_type_theme.dart';
+import 'package:studyvault/provider/home_provider.dart';
 import 'package:studyvault/repositories/note_repository.dart';
 
 class NoteDetailScreen extends StatefulWidget {
@@ -39,16 +41,18 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
   Future<void> _checkFile() async {
     if (widget.note.filePath.isNotEmpty) {
       final exists = await File(widget.note.filePath).exists();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _fileExists = exists;
           _isCheckingFile = false;
         });
+      }
     } else {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isCheckingFile = false;
         });
+      }
     }
   }
 
@@ -361,16 +365,48 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    note.title,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                      color: _textDark,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          note.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                            color: _textDark,
+                                          ),
+                                        ),
+                                      ),
+
+                                      const SizedBox(width: 6),
+
+                                      InkWell(
+                                        borderRadius: BorderRadius.circular(8),
+                                        onTap: _showRenameDialog,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: typeColor.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.edit_rounded,
+                                            size: 16,
+                                            color: typeColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
+
+                                  const SizedBox(height: 4),
+
                                   Text(
                                     _isCheckingFile
                                         ? 'Checking...'
@@ -474,6 +510,92 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showRenameDialog() async {
+    final controller = TextEditingController(text: widget.note.title);
+
+    await showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Rename File",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: "Enter new file name",
+                  prefixIcon: const Icon(Icons.drive_file_rename_outline),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Cancel"),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final newName = controller.text.trim();
+
+                        if (newName.isEmpty) {
+                          Fluttertoast.showToast(
+                            msg: "File name cannot be empty",
+                          );
+                          return;
+                        }
+
+                        if (newName == widget.note.title) {
+                          Navigator.pop(context);
+                          return;
+                        }
+
+                        widget.note.title = newName;
+
+                        await NoteRepository.instance.updateNote(widget.note);
+
+                        if (!mounted) return;
+
+                        setState(() {});
+
+                        Navigator.pop(context);
+
+                        context.read<HomeProvider>().reload();
+                        Fluttertoast.showToast(
+                          msg: "File renamed successfully",
+                        );
+                      },
+                      child: const Text("Save"),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

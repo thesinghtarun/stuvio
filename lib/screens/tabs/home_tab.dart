@@ -1,6 +1,8 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +16,7 @@ import 'package:studyvault/provider/home_provider.dart';
 import 'package:studyvault/provider/inbox_provider.dart';
 import 'package:studyvault/provider/inner_banner_provider.dart';
 import 'package:studyvault/provider/workspace_counter_provider.dart';
+import 'package:studyvault/repositories/note_repository.dart';
 import 'package:studyvault/repositories/subject_repository.dart';
 import 'package:studyvault/screens/assignment_detail_screen.dart';
 import 'package:studyvault/screens/inbox_screen.dart';
@@ -948,22 +951,94 @@ class _NotesSection extends StatelessWidget {
                     }
                     final note = displayed[realIdx];
 
-                    return _NoteCard(
-                      note: note,
-                      onTap: () async {
-                        final subject = await SubjectRepository.instance
-                            .getSubjectById(note.subjectId);
-                        if (!context.mounted) return;
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => NoteDetailScreen(
-                              note: note,
-                              subjectName: subject?.name ?? 'Unknown Subject',
+                    return Dismissible(
+                      key: ValueKey(note.id),
+
+                      direction: DismissDirection.endToStart,
+
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 24),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFF5A5F), Color(0xFFE53935)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Container(
+                          height: 52,
+                          width: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.delete_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+
+                      confirmDismiss: (_) async {
+                        HapticFeedback.mediumImpact();
+                        return await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text("Delete Note?"),
+                            content: const Text(
+                              "This action cannot be undone.",
                             ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text("Cancel"),
+                              ),
+                              FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                ),
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text("Delete"),
+                              ),
+                            ],
                           ),
                         );
                       },
+
+                      onDismissed: (_) async {
+                        await NoteRepository.instance.deleteNote(note.id);
+
+                        if (context.mounted) {
+                          context.read<HomeProvider>().loadForWorkspace(
+                            context
+                                .read<WorkspaceCounterProvider>()
+                                .selectedWorkspace
+                                ?.id,
+                          );
+
+                          Fluttertoast.showToast(msg: "Deleted");
+                        }
+                      },
+
+                      child: _NoteCard(
+                        note: note,
+                        onTap: () async {
+                          final subject = await SubjectRepository.instance
+                              .getSubjectById(note.subjectId);
+                          if (!context.mounted) return;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => NoteDetailScreen(
+                                note: note,
+                                subjectName: subject?.name ?? 'Unknown Subject',
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     );
                   },
                 );

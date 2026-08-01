@@ -39,11 +39,11 @@ class SearchProvider extends ChangeNotifier {
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          debugPrint("Banner Loaded");
+          debugPrint("Banner Loaded search tab");
           notifyListeners();
         },
         onAdFailedToLoad: (ad, error) {
-          debugPrint(error.toString());
+          debugPrint("Banner err search tab :${error.toString()}");
           ad.dispose();
           bannerAd = null;
           notifyListeners();
