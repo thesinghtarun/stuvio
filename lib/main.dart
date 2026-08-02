@@ -7,6 +7,7 @@ import 'package:studyvault/provider/bottom_navigation_provider.dart';
 import 'package:studyvault/provider/inner_banner_provider.dart';
 import 'package:studyvault/provider/profile_provider.dart';
 import 'package:studyvault/provider/search_provider.dart';
+import 'package:studyvault/provider/share_overlay_provider.dart';
 import 'package:studyvault/provider/subject_provider.dart';
 import 'package:studyvault/provider/workspace_screen_provider.dart';
 import 'package:studyvault/provider/home_provider.dart';
@@ -69,6 +70,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider(create: (context) => ProfileProvider()),
         ChangeNotifierProvider(create: (context) => InboxProvider()),
         ChangeNotifierProvider(create: (context) => InlineBannerProvider()),
+        ChangeNotifierProvider(create: (context) => ShareOverlayProvider()),
       ],
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,

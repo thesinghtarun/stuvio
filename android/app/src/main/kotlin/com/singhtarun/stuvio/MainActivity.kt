@@ -11,6 +11,8 @@ import java.io.File
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.singhtarun.stuvio/open_file"
+    private val SHARE_CHANNEL = "com.singhtarun.stuvio/share"
+    private val DRAG_CHANNEL = "com.singhtarun.stuvio/drag_share"
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -19,6 +21,55 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger,DRAG_CHANNEL).setMethodCallHandler(DragShareManager(this))
+
+        MethodChannel(
+    flutterEngine.dartExecutor.binaryMessenger,
+    SHARE_CHANNEL
+).setMethodCallHandler { call, result ->
+
+    if (call.method == "shareFile") {
+
+        val filePath = call.argument<String>("filePath")
+
+        if (filePath == null) {
+            result.error("ERROR", "Path is null", null)
+            return@setMethodCallHandler
+        }
+
+        val file = File(filePath)
+
+        if (!file.exists()) {
+            result.error("ERROR", "File not found", null)
+            return@setMethodCallHandler
+        }
+
+        val uri = FileProvider.getUriForFile(
+            this,
+            "${applicationContext.packageName}.fileprovider",
+            file
+        )
+
+        val extension = MimeTypeMap.getFileExtensionFromUrl(file.absolutePath)
+
+        val mime = MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(extension.lowercase()) ?: "*/*"
+
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = mime
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        startActivity(Intent.createChooser(intent, "Share File"))
+
+        result.success(true)
+
+    } else {
+        result.notImplemented()
+    }
+}
+        
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "openFile") {
                 val filePath = call.argument<String>("filePath")

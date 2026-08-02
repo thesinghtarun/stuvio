@@ -9,6 +9,7 @@ import 'package:studyvault/core/utils/app_logger.dart';
 import 'package:studyvault/core/utils/note_type_theme.dart';
 import 'package:studyvault/provider/home_provider.dart';
 import 'package:studyvault/repositories/note_repository.dart';
+import 'package:studyvault/services/share_services.dart';
 
 class NoteDetailScreen extends StatefulWidget {
   final Note note;
@@ -120,6 +121,15 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
               icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.share_outlined, color: Colors.white),
+                tooltip: "Share",
+                onPressed: () async {
+                  await ShareService.shareFile(note.filePath);
+                },
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(

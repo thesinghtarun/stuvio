@@ -21,6 +21,8 @@ import 'package:studyvault/repositories/subject_repository.dart';
 import 'package:studyvault/screens/assignment_detail_screen.dart';
 import 'package:studyvault/screens/inbox_screen.dart';
 import 'package:studyvault/screens/note_detail_screen.dart';
+import 'package:studyvault/screens/widgets/floating_share_card.dart';
+import 'package:studyvault/screens/widgets/hold_to_share.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -250,6 +252,7 @@ class _HomeTabState extends State<HomeTab> {
                     },
                   ),
                 ),
+                FloatingShareCard(),
               ],
             ),
           ),
@@ -1022,22 +1025,26 @@ class _NotesSection extends StatelessWidget {
                         }
                       },
 
-                      child: _NoteCard(
+                      child: HoldToShare(
                         note: note,
-                        onTap: () async {
-                          final subject = await SubjectRepository.instance
-                              .getSubjectById(note.subjectId);
-                          if (!context.mounted) return;
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => NoteDetailScreen(
-                                note: note,
-                                subjectName: subject?.name ?? 'Unknown Subject',
+                        child: _NoteCard(
+                          note: note,
+                          onTap: () async {
+                            final subject = await SubjectRepository.instance
+                                .getSubjectById(note.subjectId);
+                            if (!context.mounted) return;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => NoteDetailScreen(
+                                  note: note,
+                                  subjectName:
+                                      subject?.name ?? 'Unknown Subject',
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
                     );
                   },
