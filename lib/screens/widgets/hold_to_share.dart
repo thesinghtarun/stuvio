@@ -19,13 +19,21 @@ class _HoldToShareState extends State<HoldToShare> {
   final GlobalKey _cardKey = GlobalKey();
 
   bool _sharingStarted = false;
+  bool _nativeDragStarted = false;
+
+  Offset? _dragStartPosition;
 
   Future<void> _start(LongPressStartDetails details) async {
+    print("MOVE");
     final provider = context.read<ShareOverlayProvider>();
 
     final renderBox = _cardKey.currentContext!.findRenderObject() as RenderBox;
 
     final position = renderBox.localToGlobal(Offset.zero);
+
+    _dragStartPosition = details.globalPosition;
+
+    _nativeDragStarted = false;
 
     provider.startSharing(
       note: widget.note,
@@ -34,21 +42,51 @@ class _HoldToShareState extends State<HoldToShare> {
       fingerPosition: details.globalPosition,
     );
 
+    // final success = await DragShareService.startDrag(
+    //   filePath: widget.note.filePath,
+    //   title: widget.note.title,
+    // );
+
+    // if (success) {
+    //   provider.hideOverlay();
+    // }
+
     HapticFeedback.mediumImpact();
 
     _sharingStarted = true;
   }
 
-  void _update(LongPressMoveUpdateDetails details) {
+  Future<void> _update(LongPressMoveUpdateDetails details) async {
     if (!_sharingStarted) return;
 
-    context.read<ShareOverlayProvider>().updateFingerPosition(
-      details.globalPosition,
-    );
+    final provider = context.read<ShareOverlayProvider>();
+
+    provider.updateFingerPosition(details.globalPosition);
+
+    if (!_nativeDragStarted) {
+      final distance = (details.globalPosition - _dragStartPosition!).distance;
+
+      if (distance > 24) {
+        _nativeDragStarted = true;
+
+        final success = await DragShareService.startDrag(
+          filePath: widget.note.filePath,
+          title: widget.note.title,
+        );
+
+        if (success) {
+          provider.hideOverlay();
+        }
+      }
+    }
   }
 
   void _end() {
     if (!_sharingStarted) return;
+
+    if (_nativeDragStarted) {
+      return;
+    }
 
     _sharingStarted = false;
 

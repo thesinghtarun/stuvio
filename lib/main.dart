@@ -25,6 +25,12 @@ import 'package:studyvault/provider/inbox_provider.dart';
 ///NATIVE AD-------------------------------------------------------------------
 ///APP ID:-ca-app-pub-1345393972469011~7339248168
 ///UNIT ID:-ca-app-pub-1345393972469011/4027558652
+///
+///Deadline Native Ad: ca-app-pub-1345393972469011/3897736148
+///Upcoming Native Ad: ca-app-pub-1345393972469011/6934963021
+///Search Tab Banner Ad: ca-app-pub-1345393972469011/7836412936
+///
+///Search Tab Filters Native Ad: ca-app-pub-1345393972469011/6950706676
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 

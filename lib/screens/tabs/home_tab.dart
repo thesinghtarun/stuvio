@@ -240,12 +240,13 @@ class _HomeTabState extends State<HomeTab> {
                   alignment: Alignment.bottomCenter,
                   child: Consumer<HomeProvider>(
                     builder: (context, provider, child) {
-                      if (provider.bannerAd == null) {
+                      if (provider.bannerAd == null ||
+                          !provider.isBannerLoaded) {
                         return const SizedBox.shrink();
                       }
 
                       return SizedBox(
-                        width: provider.bannerAd!.size.width.toDouble(),
+                        width: double.infinity,
                         height: provider.bannerAd!.size.height.toDouble(),
                         child: AdWidget(ad: provider.bannerAd!),
                       );
@@ -596,6 +597,7 @@ class _DeadlinesSection extends StatelessWidget {
 
             const SizedBox(height: 12),
 
+            // Inline ads: every 4 deadline cards, 1 native ad (same as Notes)
             Consumer<InlineBannerProvider>(
               builder: (context, inLineBannerProvider, child) {
                 return ListView.separated(
@@ -794,6 +796,7 @@ class _UpcomingSection extends StatelessWidget {
 
             const SizedBox(height: 12),
 
+            // Inline ads: every 4 upcoming cards, 1 native ad (same as Notes)
             Consumer<InlineBannerProvider>(
               builder: (context, inLineBannerProvider, child) {
                 return ListView.separated(
@@ -829,6 +832,8 @@ class _UpcomingSection extends StatelessWidget {
                 );
               },
             ),
+
+            const SizedBox(height: 24),
           ],
         );
       },
@@ -1225,7 +1230,7 @@ class _DeadlineAdCardState extends State<_DeadlineAdCard> {
 
   void _loadAd() {
     _nativeAd = NativeAd(
-      adUnitId: 'ca-app-pub-1345393972469011/4027558652',
+      adUnitId: 'ca-app-pub-1345393972469011/3897736148',
       request: const AdRequest(),
       nativeTemplateStyle: NativeTemplateStyle(
         templateType: TemplateType.small,
@@ -1388,7 +1393,7 @@ class _UpcomingAdCardState extends State<_UpcomingAdCard> {
 
   void _loadAd() {
     _nativeAd = NativeAd(
-      adUnitId: 'ca-app-pub-1345393972469011/4027558652',
+      adUnitId: 'ca-app-pub-1345393972469011/6934963021',
       request: const AdRequest(),
       nativeTemplateStyle: NativeTemplateStyle(
         templateType: TemplateType.small,

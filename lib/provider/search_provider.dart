@@ -29,23 +29,32 @@ class SearchResultItem {
 class SearchProvider extends ChangeNotifier {
   // ─── Ads ──────────────────────────────────────────────────────────────────
   BannerAd? bannerAd;
+  bool _isBannerLoaded = false;
+  bool get isBannerLoaded => _isBannerLoaded;
 
   void loadBannerAd() {
+    // Guard: don't reload if already loaded
+    if (bannerAd != null && _isBannerLoaded) return;
+
     bannerAd?.dispose();
+    bannerAd = null;
+    _isBannerLoaded = false;
 
     bannerAd = BannerAd(
       size: AdSize.largeBanner,
-      adUnitId: 'ca-app-pub-1345393972469011/3049217586',
+      adUnitId: 'ca-app-pub-1345393972469011/7836412936',
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           debugPrint("Banner Loaded search tab");
+          _isBannerLoaded = true;
           notifyListeners();
         },
         onAdFailedToLoad: (ad, error) {
           debugPrint("Banner err search tab :${error.toString()}");
           ad.dispose();
           bannerAd = null;
+          _isBannerLoaded = false;
           notifyListeners();
         },
       ),
@@ -248,7 +257,14 @@ class SearchProvider extends ChangeNotifier {
   void _applyFilter() {
     switch (_selectedFilter) {
       case SearchFilter.all:
-        _results = List.from(_allResults);
+        // Exclude NoteType.assignment notes — they are PDF attachments
+        // created alongside Assignment records, causing duplicate entries.
+        // They remain accessible via the Assignment detail screen.
+        _results = _allResults
+            .where(
+              (e) => !(e.isNote && e.note!.type == NoteType.assignment),
+            )
+            .toList();
         break;
       case SearchFilter.notes:
         _results = _allResults
@@ -256,13 +272,10 @@ class SearchProvider extends ChangeNotifier {
             .toList();
         break;
       case SearchFilter.assignments:
-        _results = _allResults
-            .where(
-              (e) =>
-                  e.isAssignment ||
-                  (e.isNote && e.note!.type == NoteType.assignment),
-            )
-            .toList();
+        // Only show the structured Assignment record.
+        // The companion Note(type=assignment) is the raw PDF attachment
+        // and is already visible in the Assignment detail screen.
+        _results = _allResults.where((e) => e.isAssignment).toList();
         break;
       case SearchFilter.pyqs:
         _results = _allResults

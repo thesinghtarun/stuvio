@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
 import 'package:studyvault/core/utils/note_type_theme.dart';
+import 'package:studyvault/provider/inner_banner_provider.dart';
 import 'package:studyvault/provider/search_provider.dart';
 import 'package:studyvault/provider/workspace_counter_provider.dart';
 import 'package:studyvault/repositories/note_repository.dart';
@@ -154,12 +155,12 @@ class _SearchTabState extends State<SearchTab> {
                       alignment: Alignment.bottomCenter,
                       child: Consumer<SearchProvider>(
                         builder: (context, provider, child) {
-                          if (provider.bannerAd == null) {
+                          if (provider.bannerAd == null || !provider.isBannerLoaded) {
                             return const SizedBox.shrink();
                           }
 
                           return SizedBox(
-                            width: provider.bannerAd!.size.width.toDouble(),
+                            width: double.infinity,
                             height: provider.bannerAd!.size.height.toDouble(),
                             child: AdWidget(ad: provider.bannerAd!),
                           );
@@ -511,23 +512,34 @@ class _SearchResultView extends StatelessWidget {
 
             const SizedBox(height: 8),
 
-            // Results List
+            // Results List with injected native ads every 5 items
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                itemCount: provider.results.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  final item = provider.results[index];
-                  final subject = provider.getSubject(item.subjectId);
-
-                  return _SearchResultCard(
-                    item: item,
-                    subjectName: subject?.name ?? "Subject",
+              child: Consumer<InlineBannerProvider>(
+                builder: (context, adProvider, _) {
+                  return ListView.separated(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    itemCount: adProvider.getItemCount(provider.results.length),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      if (adProvider.isAdIndex(index)) {
+                        return const _SearchResultAdCard();
+                      }
+                      final realIndex = adProvider.getRealIndex(index);
+                      if (realIndex < 0 ||
+                          realIndex >= provider.results.length) {
+                        return const SizedBox.shrink();
+                      }
+                      final item = provider.results[realIndex];
+                      final subject = provider.getSubject(item.subjectId);
+                      return _SearchResultCard(
+                        item: item,
+                        subjectName: subject?.name ?? "Subject",
+                      );
+                    },
                   );
                 },
               ),
@@ -634,7 +646,7 @@ class _SearchResultCard extends StatelessWidget {
 
     if (item.isAssignment) {
       final a = item.assignment!;
-      subtitle = "$subjectName • Assignment";
+      subtitle = "$subjectName \u2022 Assignment";
       extraMeta =
           "Due: ${a.dueDate.day.toString().padLeft(2, '0')}/${a.dueDate.month.toString().padLeft(2, '0')}/${a.dueDate.year}";
     } else {
@@ -642,7 +654,7 @@ class _SearchResultCard extends StatelessWidget {
       final formattedSize = n.fileSize > 0
           ? "${(n.fileSize / 1024).toStringAsFixed(1)} KB"
           : "Text Note";
-      subtitle = "$subjectName • ${NoteTypeTheme.label(n.type)}";
+      subtitle = "$subjectName \u2022 ${NoteTypeTheme.label(n.type)}";
       extraMeta = formattedSize;
     }
 
@@ -745,6 +757,162 @@ class _SearchResultCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Search Result Native Ad Card ─────────────────────────────────────────────
+
+class _SearchResultAdCard extends StatefulWidget {
+  const _SearchResultAdCard();
+
+  @override
+  State<_SearchResultAdCard> createState() => _SearchResultAdCardState();
+}
+
+class _SearchResultAdCardState extends State<_SearchResultAdCard> {
+  NativeAd? _nativeAd;
+  bool _isLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAd();
+  }
+
+  void _loadAd() {
+    _nativeAd = NativeAd(
+      adUnitId: 'ca-app-pub-1345393972469011/6950706676',
+      request: const AdRequest(),
+      nativeTemplateStyle: NativeTemplateStyle(
+        templateType: TemplateType.small,
+        mainBackgroundColor: Colors.white,
+        cornerRadius: 16.0,
+      ),
+      listener: NativeAdListener(
+        onAdLoaded: (ad) {
+          if (mounted) setState(() => _isLoaded = true);
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+          _nativeAd = null;
+        },
+      ),
+    )..load();
+  }
+
+  @override
+  void dispose() {
+    _nativeAd?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoaded && _nativeAd != null) {
+      return Container(
+        height: 90,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: AdWidget(ad: _nativeAd!),
+        ),
+      );
+    }
+
+    // Placeholder while ad loads
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: const Color(0xFF6750A4).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.star_rounded,
+                color: Color(0xFF6750A4),
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sponsored',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: const Color(0xFF111827),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6750A4),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'AD',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Loading...',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: const Color(0xFF9CA3AF),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

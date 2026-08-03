@@ -12,6 +12,7 @@ import 'package:studyvault/provider/workspace_counter_provider.dart';
 import 'package:studyvault/provider/workspace_screen_provider.dart';
 import 'package:studyvault/screens/Workspace/workspace_screen.dart';
 import 'package:studyvault/screens/about_app_screen.dart';
+import 'package:studyvault/screens/how_to_use.dart';
 import 'package:studyvault/screens/privacy_policy_screen.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -782,25 +783,31 @@ class _WorkspaceCard extends StatelessWidget {
                       ],
                     ],
                   ),
-                  if ((workspace.course != null && workspace.course!.isNotEmpty) ||
-                      (workspace.specialization != null && workspace.specialization!.isNotEmpty) ||
-                      (workspace.semester != null && workspace.semester!.isNotEmpty)) ...[
+                  if ((workspace.course != null &&
+                          workspace.course!.isNotEmpty) ||
+                      (workspace.specialization != null &&
+                          workspace.specialization!.isNotEmpty) ||
+                      (workspace.semester != null &&
+                          workspace.semester!.isNotEmpty)) ...[
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 6,
                       runSpacing: 4,
                       children: [
-                        if (workspace.course != null && workspace.course!.isNotEmpty)
+                        if (workspace.course != null &&
+                            workspace.course!.isNotEmpty)
                           _DetailBadge(
                             label: workspace.course!,
                             icon: Icons.school_outlined,
                           ),
-                        if (workspace.specialization != null && workspace.specialization!.isNotEmpty)
+                        if (workspace.specialization != null &&
+                            workspace.specialization!.isNotEmpty)
                           _DetailBadge(
                             label: workspace.specialization!,
                             icon: Icons.psychology_outlined,
                           ),
-                        if (workspace.semester != null && workspace.semester!.isNotEmpty)
+                        if (workspace.semester != null &&
+                            workspace.semester!.isNotEmpty)
                           _DetailBadge(
                             label: workspace.semester!,
                             icon: Icons.calendar_month_outlined,
@@ -865,11 +872,7 @@ class _DetailBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 11,
-            color: const Color(0xFF5C35E8),
-          ),
+          Icon(icon, size: 11, color: const Color(0xFF5C35E8)),
           const SizedBox(width: 4),
           Flexible(
             child: Text(
@@ -1002,12 +1005,18 @@ class _SettingsCardState extends State<_SettingsCard> {
       ),
       child: Column(
         children: [
-          _SettingsTile(
-            icon: Icons.info_outline_rounded,
-            iconColor: const Color(0xFF5C35E8),
-            title: 'App Version',
-            subtitle: _version,
-            isFirst: true,
+          InkWell(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => HowToUseScreen()),
+            ),
+            child: _SettingsTile(
+              icon: Icons.lightbulb_outline_rounded,
+              iconColor: const Color(0xFF5C35E8),
+              title: 'How to use',
+              subtitle: "STUVIO",
+              isFirst: true,
+            ),
           ),
           _Separator(),
           InkWell(
@@ -1035,8 +1044,15 @@ class _SettingsCardState extends State<_SettingsCard> {
               iconColor: const Color(0xFF0EA5E9),
               title: 'About STUVIO',
               subtitle: 'Notes • PDFs • Organize • Study Smart',
-              isLast: true,
             ),
+          ),
+          _Separator(),
+          _SettingsTile(
+            icon: Icons.info_outline_rounded,
+            iconColor: const Color(0xFF5C35E8),
+            title: 'App Version',
+            subtitle: _version,
+            isLast: true,
           ),
         ],
       ),

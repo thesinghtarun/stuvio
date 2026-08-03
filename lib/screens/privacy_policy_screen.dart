@@ -389,7 +389,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
     final Uri emailUri = Uri(
       scheme: 'mailto',
       path: 'stuviobytarun@gmail.com',
-      queryParameters: {'subject': 'StudyVault Support'},
+      queryParameters: {'subject': 'STUVIO Support'},
     );
 
     if (await canLaunchUrl(emailUri)) {

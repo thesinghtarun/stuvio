@@ -52,6 +52,13 @@ class ShareOverlayProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void hideOverlay() {
+    if (!_isSharing) return;
+
+    _isSharing = false;
+    notifyListeners();
+  }
+
   /// Called continuously by the share target
   void setHoveringShareTarget(bool hovering) {
     if (_isOverShareTarget == hovering) return;

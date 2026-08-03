@@ -12,6 +12,20 @@ import 'package:studyvault/repositories/assignment_repository.dart';
 import 'package:studyvault/repositories/inbox_repository.dart';
 import 'package:studyvault/repositories/note_repository.dart';
 
+/// Study-relevant file extensions allowed in Inbox.
+/// Covers: PDF, common images, Word, text, spreadsheets, presentations.
+const List<String> _kAllowedExtensions = [
+  'pdf',
+  'jpg', 'jpeg', 'png', 'webp',
+  'doc', 'docx',
+  'txt', 'odt',
+  'ppt', 'pptx',
+  'xls', 'xlsx',
+];
+
+/// Maximum file size allowed: 50 MB.
+const int _kMaxFileSizeBytes = 50 * 1024 * 1024;
+
 class InboxProvider extends ChangeNotifier {
   List<InboxItem> _items = [];
   bool _isLoading = false;
@@ -72,22 +86,42 @@ class InboxProvider extends ChangeNotifier {
           ? rawName.split('.').last.toLowerCase()
           : '';
 
+      // ── Extension guard (covers picker + share intent) ──────────────────
+      if (!_kAllowedExtensions.contains(ext)) {
+        AppLogger.info(
+          'InboxProvider.addFileToInbox',
+          'Blocked unsupported file type: .$ext',
+        );
+        Fluttertoast.showToast(
+          msg:
+              '.$ext files are not supported. Allowed: PDF, images, Word, Excel, PowerPoint, text.',
+          toastLength: Toast.LENGTH_LONG,
+        );
+        return null;
+      }
+
+      // ── Size guard (covers picker + share intent) ────────────────────────
+      final fileSize = await sourceFile.length();
+      if (fileSize > _kMaxFileSizeBytes) {
+        final sizeMb = (fileSize / (1024 * 1024)).toStringAsFixed(1);
+        AppLogger.info(
+          'InboxProvider.addFileToInbox',
+          'Blocked oversized file: ${sizeMb}MB (limit 50MB)',
+        );
+        Fluttertoast.showToast(
+          msg: 'File too large (${sizeMb}MB). Maximum allowed size is 50 MB.',
+          toastLength: Toast.LENGTH_LONG,
+        );
+        return null;
+      }
+
       String fileType = 'other';
-      if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].contains(ext)) {
+      if (['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
         fileType = 'image';
       } else if (ext == 'pdf') {
         fileType = 'pdf';
-      } else if ([
-        'doc',
-        'docx',
-        'txt',
-        'rtf',
-        'odt',
-        'ppt',
-        'pptx',
-        'xls',
-        'xlsx',
-      ].contains(ext)) {
+      } else if (['doc', 'docx', 'txt', 'odt', 'ppt', 'pptx', 'xls', 'xlsx']
+          .contains(ext)) {
         fileType = 'doc';
       }
 
@@ -95,7 +129,6 @@ class InboxProvider extends ChangeNotifier {
       final destPath =
           '${inboxDir.path}/${timeStamp}_${rawName.replaceAll(RegExp(r'[^\w.-]'), '_')}';
 
-      final fileSize = await sourceFile.length();
       await sourceFile.copy(destPath);
 
       final item = await InboxRepository.instance.addInboxItem(
@@ -116,11 +149,13 @@ class InboxProvider extends ChangeNotifier {
     }
   }
 
-  /// Pick file from device storage and add to Inbox
+  /// Pick file from device storage and add to Inbox.
+  /// The system file picker is restricted to study-relevant extensions.
   Future<bool> pickAndUploadFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
+        type: FileType.custom,
+        allowedExtensions: _kAllowedExtensions,
         allowMultiple: false,
       );
 

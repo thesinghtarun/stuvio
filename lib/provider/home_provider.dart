@@ -12,9 +12,16 @@ import 'package:studyvault/repositories/subject_repository.dart';
 class HomeProvider extends ChangeNotifier {
   // ─── Ads ──────────────────────────────────────────────────────────────────
   BannerAd? bannerAd;
+  bool _isBannerLoaded = false;
+  bool get isBannerLoaded => _isBannerLoaded;
 
   void loadBannerAd() {
+    // Guard: don't reload if already loaded or loading
+    if (bannerAd != null && _isBannerLoaded) return;
+
     bannerAd?.dispose();
+    bannerAd = null;
+    _isBannerLoaded = false;
 
     bannerAd = BannerAd(
       size: AdSize.banner,
@@ -23,12 +30,14 @@ class HomeProvider extends ChangeNotifier {
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           debugPrint("Banner Loaded home tab");
+          _isBannerLoaded = true;
           notifyListeners();
         },
         onAdFailedToLoad: (ad, error) {
           debugPrint("Banner err home tab: ${error.toString()}");
           ad.dispose();
           bannerAd = null;
+          _isBannerLoaded = false;
           notifyListeners();
         },
       ),
