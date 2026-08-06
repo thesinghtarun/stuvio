@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
+import 'package:studyvault/core/models/assignment.dart';
 import 'package:studyvault/core/models/note.dart';
 import 'package:studyvault/core/utils/app_logger.dart';
 import 'package:studyvault/core/utils/note_type_theme.dart';
@@ -691,15 +692,37 @@ class _SearchResultCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: const Color(0xFF111827),
-                      ),
+                    Row(
+                      children: [
+                        if (item.isAssignment) ...
+                          [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: item.assignment!.status == AssignmentStatus.ongoing
+                                    ? const Color(0xFF3B82F6)
+                                    : item.assignment!.status == AssignmentStatus.completed
+                                        ? const Color(0xFF10B981)
+                                        : const Color(0xFFF59E0B),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: const Color(0xFF111827),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 3),
                     Text(

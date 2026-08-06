@@ -64,9 +64,11 @@ class AssignmentRepository {
     required DateTime dueDate,
     AssignmentPriority priority = AssignmentPriority.medium,
     bool submitted = false,
+    int? noteId,
   }) async {
     final assignment = Assignment()
       ..subjectId = subjectId
+      ..noteId = noteId
       ..title = title.trim()
       ..description = description.trim()
       ..dueDate = dueDate
@@ -79,7 +81,7 @@ class AssignmentRepository {
       final id = await isar.assignments.put(assignment);
       assignment.id = id;
     });
-    AppLogger.db('AssignmentRepository.createAssignment', 'Created Assignment: "${assignment.title}" (Priority: ${assignment.priority.name}, ID: ${assignment.id}) under Subject ID: $subjectId');
+    AppLogger.db('AssignmentRepository.createAssignment', 'Created Assignment: "${assignment.title}" (Priority: ${assignment.priority.name}, ID: ${assignment.id}, noteId: $noteId) under Subject ID: $subjectId');
 
     return assignment;
   }

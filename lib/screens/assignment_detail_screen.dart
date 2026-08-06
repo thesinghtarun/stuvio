@@ -62,25 +62,32 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
 
   Future<void> _loadAttachedPdf() async {
     try {
-      final notes = await NoteRepository.instance.getNotesForSubject(
-        widget.assignment.subjectId,
-      );
-
       Note? targetNote;
-      for (final n in notes) {
-        if (n.filePath.isNotEmpty) {
-          final isAttachedForAssignment =
-              n.type == NoteType.assignment ||
-              n.title.toLowerCase().contains(
-                    widget.assignment.title.toLowerCase(),
-                  ) ||
-              widget.assignment.title.toLowerCase().contains(
-                    n.title.toLowerCase(),
-                  );
+      if (widget.assignment.noteId != null) {
+        targetNote = await NoteRepository.instance.getNoteById(
+          widget.assignment.noteId!,
+        );
+      }
 
-          if (isAttachedForAssignment) {
-            targetNote = n;
-            break;
+      if (targetNote == null) {
+        final notes = await NoteRepository.instance.getNotesForSubject(
+          widget.assignment.subjectId,
+        );
+
+        for (final n in notes) {
+          if (n.filePath.isNotEmpty) {
+            final isTitleMatch =
+                n.title.toLowerCase().contains(
+                      widget.assignment.title.toLowerCase(),
+                    ) ||
+                widget.assignment.title.toLowerCase().contains(
+                      n.title.toLowerCase(),
+                    );
+
+            if (isTitleMatch && n.type == NoteType.assignment) {
+              targetNote = n;
+              break;
+            }
           }
         }
       }
@@ -236,61 +243,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     }
   }
 
-  Widget _buildAttachedMaterialPreview() {
-    if (_attachedNote == null || _attachedNote!.filePath.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Image.asset(
-            'assets/images/standard_pdf_img.png',
-            height: 120,
-            fit: BoxFit.contain,
-          ),
-        ),
-      );
-    }
-
-    final path = _attachedNote!.filePath;
-    final ext = path.split('.').last.toLowerCase();
-    final isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(ext);
-    final isPdf = ext == 'pdf';
-
-    if (isImage) {
-      final file = File(path);
-      if (file.existsSync()) {
-        return Image.file(file, fit: BoxFit.contain);
-      }
-    }
-
-    if (isPdf) {
-      if (_showThumbnail) {
-        if (_pdfController != null) {
-          return PdfView(
-            controller: _pdfController!,
-            scrollDirection: Axis.vertical,
-            physics: const NeverScrollableScrollPhysics(),
-          );
-        } else if (_pdfThumbnailBytes != null) {
-          return Image.memory(_pdfThumbnailBytes!, fit: BoxFit.contain);
-        } else if (_isLoadingThumbnail) {
-          return const Center(
-            child: CircularProgressIndicator(color: Color(0xFF6750A4)),
-          );
-        }
-      }
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Image.asset(
-            'assets/images/standard_pdf_img.png',
-            height: 120,
-            fit: BoxFit.contain,
-          ),
-        ),
-      );
-    }
-
-    // Document / Other File Types (DOC, DOCX, TXT, PPT, XLSX)
+  Widget _buildDefaultIconView(IconData iconData, String extension) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -301,9 +254,9 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
               color: const Color(0xFF6750A4).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.insert_drive_file_rounded,
-              color: Color(0xFF6750A4),
+            child: Icon(
+              iconData,
+              color: const Color(0xFF6750A4),
               size: 44,
             ),
           ),
@@ -315,7 +268,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              ext.toUpperCase(),
+              extension,
               style: GoogleFonts.plusJakartaSans(
                 color: Colors.white,
                 fontSize: 12,
@@ -335,6 +288,57 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildAttachedMaterialPreview() {
+    if (_attachedNote == null || _attachedNote!.filePath.isEmpty) {
+      return _buildDefaultIconView(Icons.picture_as_pdf_rounded, 'PDF');
+    }
+
+    final path = _attachedNote!.filePath;
+    final ext = path.split('.').last.toLowerCase();
+    final isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(ext);
+    final isPdf = ext == 'pdf';
+
+    if (_showThumbnail) {
+      if (isImage) {
+        final file = File(path);
+        if (file.existsSync()) {
+          return Image.file(file, fit: BoxFit.contain);
+        }
+      }
+
+      if (isPdf) {
+        if (_pdfController != null) {
+          return PdfView(
+            controller: _pdfController!,
+            scrollDirection: Axis.vertical,
+            physics: const NeverScrollableScrollPhysics(),
+          );
+        } else if (_pdfThumbnailBytes != null) {
+          return Image.memory(_pdfThumbnailBytes!, fit: BoxFit.contain);
+        } else if (_isLoadingThumbnail) {
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFF6750A4)),
+          );
+        }
+      }
+    }
+
+    // Default Fallback / Icon view
+    if (isPdf) {
+      return _buildDefaultIconView(Icons.picture_as_pdf_rounded, 'PDF');
+    } else if (isImage) {
+      return _buildDefaultIconView(Icons.image_rounded, 'IMAGE');
+    } else if (['doc', 'docx', 'txt', 'rtf'].contains(ext)) {
+      return _buildDefaultIconView(Icons.description_rounded, ext.toUpperCase());
+    } else if (['ppt', 'pptx'].contains(ext)) {
+      return _buildDefaultIconView(Icons.slideshow_rounded, ext.toUpperCase());
+    } else if (['xls', 'xlsx', 'csv'].contains(ext)) {
+      return _buildDefaultIconView(Icons.table_view_rounded, ext.toUpperCase());
+    } else {
+      return _buildDefaultIconView(Icons.insert_drive_file_rounded, ext.toUpperCase());
+    }
   }
 
   Future<void> _saveAssignment() async {
@@ -657,55 +661,59 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                         ),
 
                         // Toggle Icon (Asset Image <-> Page 1 Thumbnail)
-                        Positioned(
-                          top: 12,
-                          right: 12,
-                          child: Material(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            elevation: 2,
-                            child: InkWell(
-                              onTap: () {
-                                setState(() {
-                                  _showThumbnail = !_showThumbnail;
-                                });
-                                if (_showThumbnail &&
-                                    _pdfThumbnailBytes == null &&
-                                    _attachedNote != null) {
-                                  _renderPdfThumbnail(_attachedNote!.filePath);
-                                }
-                              },
+                        if (_attachedNote != null &&
+                            ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif'].contains(
+                              _attachedNote!.filePath.split('.').last.toLowerCase(),
+                            ))
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: Material(
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      _showThumbnail
-                                          ? Icons.image_rounded
-                                          : Icons.auto_stories_rounded,
-                                      color: const Color(0xFF6750A4),
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      _showThumbnail ? 'Default' : 'Thumbnail',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                              elevation: 2,
+                              child: InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    _showThumbnail = !_showThumbnail;
+                                  });
+                                  if (_showThumbnail &&
+                                      _pdfThumbnailBytes == null &&
+                                      _attachedNote != null) {
+                                    _renderPdfThumbnail(_attachedNote!.filePath);
+                                  }
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _showThumbnail
+                                            ? Icons.image_rounded
+                                            : Icons.auto_stories_rounded,
                                         color: const Color(0xFF6750A4),
+                                        size: 18,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _showThumbnail ? 'Default' : 'Thumbnail',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFF6750A4),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
                       ],
                     ),
 

@@ -32,35 +32,40 @@ const AssignmentSchema = CollectionSchema(
       name: r'dueDate',
       type: IsarType.dateTime,
     ),
-    r'priority': PropertySchema(
+    r'noteId': PropertySchema(
       id: 3,
+      name: r'noteId',
+      type: IsarType.long,
+    ),
+    r'priority': PropertySchema(
+      id: 4,
       name: r'priority',
       type: IsarType.byte,
       enumMap: _AssignmentpriorityEnumValueMap,
     ),
     r'status': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'status',
       type: IsarType.byte,
       enumMap: _AssignmentstatusEnumValueMap,
     ),
     r'subjectId': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'subjectId',
       type: IsarType.long,
     ),
     r'submitted': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'submitted',
       type: IsarType.bool,
     ),
     r'title': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'title',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -79,6 +84,19 @@ const AssignmentSchema = CollectionSchema(
       properties: [
         IndexPropertySchema(
           name: r'subjectId',
+          type: IndexType.value,
+          caseSensitive: false,
+        )
+      ],
+    ),
+    r'noteId': IndexSchema(
+      id: -9014133502494436840,
+      name: r'noteId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'noteId',
           type: IndexType.value,
           caseSensitive: false,
         )
@@ -126,12 +144,13 @@ void _assignmentSerialize(
   writer.writeDateTime(offsets[0], object.createdAt);
   writer.writeString(offsets[1], object.description);
   writer.writeDateTime(offsets[2], object.dueDate);
-  writer.writeByte(offsets[3], object.priority.index);
-  writer.writeByte(offsets[4], object.status.index);
-  writer.writeLong(offsets[5], object.subjectId);
-  writer.writeBool(offsets[6], object.submitted);
-  writer.writeString(offsets[7], object.title);
-  writer.writeDateTime(offsets[8], object.updatedAt);
+  writer.writeLong(offsets[3], object.noteId);
+  writer.writeByte(offsets[4], object.priority.index);
+  writer.writeByte(offsets[5], object.status.index);
+  writer.writeLong(offsets[6], object.subjectId);
+  writer.writeBool(offsets[7], object.submitted);
+  writer.writeString(offsets[8], object.title);
+  writer.writeDateTime(offsets[9], object.updatedAt);
 }
 
 Assignment _assignmentDeserialize(
@@ -145,16 +164,17 @@ Assignment _assignmentDeserialize(
   object.description = reader.readString(offsets[1]);
   object.dueDate = reader.readDateTime(offsets[2]);
   object.id = id;
+  object.noteId = reader.readLongOrNull(offsets[3]);
   object.priority =
-      _AssignmentpriorityValueEnumMap[reader.readByteOrNull(offsets[3])] ??
+      _AssignmentpriorityValueEnumMap[reader.readByteOrNull(offsets[4])] ??
           AssignmentPriority.low;
   object.status =
-      _AssignmentstatusValueEnumMap[reader.readByteOrNull(offsets[4])] ??
+      _AssignmentstatusValueEnumMap[reader.readByteOrNull(offsets[5])] ??
           AssignmentStatus.pending;
-  object.subjectId = reader.readLong(offsets[5]);
-  object.submitted = reader.readBool(offsets[6]);
-  object.title = reader.readString(offsets[7]);
-  object.updatedAt = reader.readDateTime(offsets[8]);
+  object.subjectId = reader.readLong(offsets[6]);
+  object.submitted = reader.readBool(offsets[7]);
+  object.title = reader.readString(offsets[8]);
+  object.updatedAt = reader.readDateTime(offsets[9]);
   return object;
 }
 
@@ -172,18 +192,20 @@ P _assignmentDeserializeProp<P>(
     case 2:
       return (reader.readDateTime(offset)) as P;
     case 3:
+      return (reader.readLongOrNull(offset)) as P;
+    case 4:
       return (_AssignmentpriorityValueEnumMap[reader.readByteOrNull(offset)] ??
           AssignmentPriority.low) as P;
-    case 4:
+    case 5:
       return (_AssignmentstatusValueEnumMap[reader.readByteOrNull(offset)] ??
           AssignmentStatus.pending) as P;
-    case 5:
-      return (reader.readLong(offset)) as P;
     case 6:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 7:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -235,6 +257,14 @@ extension AssignmentQueryWhereSort
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         const IndexWhereClause.any(indexName: r'subjectId'),
+      );
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterWhere> anyNoteId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'noteId'),
       );
     });
   }
@@ -392,6 +422,116 @@ extension AssignmentQueryWhere
         lower: [lowerSubjectId],
         includeLower: includeLower,
         upper: [upperSubjectId],
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterWhereClause> noteIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'noteId',
+        value: [null],
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterWhereClause> noteIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'noteId',
+        lower: [null],
+        includeLower: false,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterWhereClause> noteIdEqualTo(
+      int? noteId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'noteId',
+        value: [noteId],
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterWhereClause> noteIdNotEqualTo(
+      int? noteId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'noteId',
+              lower: [],
+              upper: [noteId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'noteId',
+              lower: [noteId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'noteId',
+              lower: [noteId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'noteId',
+              lower: [],
+              upper: [noteId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterWhereClause> noteIdGreaterThan(
+    int? noteId, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'noteId',
+        lower: [noteId],
+        includeLower: include,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterWhereClause> noteIdLessThan(
+    int? noteId, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'noteId',
+        lower: [],
+        upper: [noteId],
+        includeUpper: include,
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterWhereClause> noteIdBetween(
+    int? lowerNoteId,
+    int? upperNoteId, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'noteId',
+        lower: [lowerNoteId],
+        includeLower: includeLower,
+        upper: [upperNoteId],
         includeUpper: includeUpper,
       ));
     });
@@ -734,6 +874,76 @@ extension AssignmentQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'id',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterFilterCondition> noteIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'noteId',
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterFilterCondition>
+      noteIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'noteId',
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterFilterCondition> noteIdEqualTo(
+      int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'noteId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterFilterCondition> noteIdGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'noteId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterFilterCondition> noteIdLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'noteId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterFilterCondition> noteIdBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'noteId',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -1143,6 +1353,18 @@ extension AssignmentQuerySortBy
     });
   }
 
+  QueryBuilder<Assignment, Assignment, QAfterSortBy> sortByNoteId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'noteId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterSortBy> sortByNoteIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'noteId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Assignment, Assignment, QAfterSortBy> sortByPriority() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'priority', Sort.asc);
@@ -1266,6 +1488,18 @@ extension AssignmentQuerySortThenBy
     });
   }
 
+  QueryBuilder<Assignment, Assignment, QAfterSortBy> thenByNoteId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'noteId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Assignment, Assignment, QAfterSortBy> thenByNoteIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'noteId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Assignment, Assignment, QAfterSortBy> thenByPriority() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'priority', Sort.asc);
@@ -1360,6 +1594,12 @@ extension AssignmentQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Assignment, Assignment, QDistinct> distinctByNoteId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'noteId');
+    });
+  }
+
   QueryBuilder<Assignment, Assignment, QDistinct> distinctByPriority() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'priority');
@@ -1421,6 +1661,12 @@ extension AssignmentQueryProperty
   QueryBuilder<Assignment, DateTime, QQueryOperations> dueDateProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'dueDate');
+    });
+  }
+
+  QueryBuilder<Assignment, int?, QQueryOperations> noteIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'noteId');
     });
   }
 

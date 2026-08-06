@@ -22,6 +22,9 @@ class Assignment {
   late int subjectId;
 
   @Index()
+  int? noteId;
+
+  @Index()
   late String title;
 
   String description = "";

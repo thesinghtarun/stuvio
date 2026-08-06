@@ -233,6 +233,14 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
 
       // 2. Persist in Isar DB
       if (_isAssignmentCategory) {
+        final note = await NoteRepository.instance.createNote(
+          subjectId: _selectedSubject!.id,
+          title: '$title (Attached PDF)',
+          type: NoteType.assignment,
+          filePath: destinationPath,
+          fileSize: fileSize,
+        );
+
         final assignment = await AssignmentRepository.instance.createAssignment(
           subjectId: _selectedSubject!.id,
           title: title,
@@ -241,19 +249,12 @@ class _SaveSharedPdfDialogState extends State<SaveSharedPdfDialog> {
               : 'Attached PDF: $sanitizedFileName',
           dueDate: _dueDate,
           priority: _priority,
-        );
-
-        await NoteRepository.instance.createNote(
-          subjectId: _selectedSubject!.id,
-          title: '$title (Attached PDF)',
-          type: NoteType.assignment,
-          filePath: destinationPath,
-          fileSize: fileSize,
+          noteId: note.id,
         );
 
         AppLogger.action(
           'IMPORT_SUCCESS',
-          'Created Assignment ID ${assignment.id} due on ${_dueDate.toLocal()}',
+          'Created Assignment ID ${assignment.id} due on ${_dueDate.toLocal()} with Note ID ${note.id}',
         );
       } else {
         NoteType noteType = NoteType.assignment;

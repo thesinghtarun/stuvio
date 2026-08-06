@@ -206,7 +206,7 @@ class InboxProvider extends ChangeNotifier {
       }
 
       // Create Note entry
-      await NoteRepository.instance.createNote(
+      final note = await NoteRepository.instance.createNote(
         subjectId: subjectId,
         title: title,
         type: noteType,
@@ -222,6 +222,7 @@ class InboxProvider extends ChangeNotifier {
           description: 'Attached document: $title',
           dueDate: dueDate ?? DateTime.now().add(const Duration(days: 1)),
           priority: priority,
+          noteId: note.id,
         );
       }
 

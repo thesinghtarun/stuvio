@@ -273,10 +273,8 @@ class InboxContainer extends StatefulWidget {
 class _InboxContainerState extends State<InboxContainer>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-
   late Animation<double> _scale;
   late Animation<double> _opacity;
-  late Animation<Offset> _slide;
 
   @override
   void initState() {
@@ -284,23 +282,20 @@ class _InboxContainerState extends State<InboxContainer>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 450),
     );
 
+    // Scale from 0 → 1 with exponential ease — starts sharp, lands smooth
     _scale = Tween<double>(
-      begin: 0.15,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutExpo));
 
+    // Fade in alongside the scale
     _opacity = Tween<double>(
-      begin: 0,
-      end: 1,
+      begin: 0.0,
+      end: 1.0,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
-
-    _slide = Tween<Offset>(
-      begin: Offset(.65, -.9),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -324,94 +319,94 @@ class _InboxContainerState extends State<InboxContainer>
 
         return FadeTransition(
           opacity: _opacity,
-          child: SlideTransition(
-            position: _slide,
-            child: ScaleTransition(
-              scale: _scale,
-              child: Center(
-                child: Material(
-                  color: Colors.transparent,
-                  child: Container(
-                    width: MediaQuery.of(context).size.width * 0.7,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
+          child: ScaleTransition(
+            // Pivot point aligned to the inbox icon position (top-right of header)
+            // so the card appears to grow out of — and collapse back into — the icon
+            alignment: const Alignment(0.82, -0.88),
+            scale: _scale,
+            child: Center(
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  width: MediaQuery.of(context).size.width * 0.7,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 16,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 16,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: IconButton(
-                              onPressed: () async {
-                                await _controller.reverse();
-                                provider.hideInboxPopup();
-                              },
-                              icon: const Icon(Icons.arrow_back_ios),
-                            ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: IconButton(
+                            onPressed: () async {
+                              await _controller.reverse();
+                              provider.hideInboxPopup();
+                            },
+                            icon: const Icon(Icons.arrow_back_ios),
                           ),
-                          Center(
-                            child: Image.asset(
-                              "assets/images/wave.png",
-                              width: 200,
-                              height: 200,
-                            ),
+                        ),
+                        Center(
+                          child: Image.asset(
+                            "assets/images/wave.png",
+                            width: 200,
+                            height: 200,
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            "Some files need your attention",
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          "Some files need your attention",
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
-                          Text(
-                            "Click the button to organize your learnings",
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(fontSize: 13),
-                          ),
-                          SizedBox(height: 20),
-                          Consumer<HomeProvider>(
-                            builder: (context, provider, child) {
-                              return SizedBox(
-                                height: 50,
-                                width: MediaQuery.of(context).size.width * 0.6,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF5C35E8),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                  onPressed: () {
-                                    provider.hideInboxPopup();
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => InboxScreen(),
-                                      ),
-                                    );
-                                  },
-                                  child: Text(
-                                    "Open Inbox",
-                                    style: GoogleFonts.plusJakartaSans(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                        ),
+                        Text(
+                          "Click the button to organize your learnings",
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 13),
+                        ),
+                        SizedBox(height: 20),
+                        Consumer<HomeProvider>(
+                          builder: (context, provider, child) {
+                            return SizedBox(
+                              height: 50,
+                              width: MediaQuery.of(context).size.width * 0.6,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF5C35E8),
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
                                   ),
                                 ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                                onPressed: () {
+                                  provider.hideInboxPopup();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => InboxScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  "Open Inbox",
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -652,92 +647,118 @@ class _DeadlineCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = HomeProvider.daysLeftLabel(assignment.dueDate);
 
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFFEE2E2), width: 1.2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFFFECACA),
+            width: 1.2,
+          ), // Light red border
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFEF4444).withValues(alpha: 0.04),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
+              color: const Color(0xFFEF4444).withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           children: [
-            // Top row: Dynamic due label + shield icon badge
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 16, 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Left: Urgent Alarm Icon Badge
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEE2E2), // Soft red background
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.alarm_on_rounded,
+                color: Color(0xFFEF4444),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            // Middle: Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFEF4444),
-                    ),
-                  ),
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFFE4E6),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.shield_outlined,
-                        color: Color(0xFFF43F5E),
-                        size: 20,
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: assignment.status == AssignmentStatus.ongoing
+                              ? const Color(0xFF3B82F6)
+                              : assignment.status == AssignmentStatus.completed
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFF59E0B),
+                        ),
                       ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          assignment.title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF111827),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  FutureBuilder(
+                    future: SubjectRepository.instance.getSubjectById(
+                      assignment.subjectId,
                     ),
+                    builder: (context, snapshot) {
+                      final subjectName = snapshot.data?.name ?? '';
+                      return Text(
+                        "$subjectName • Due: ${HomeProvider.formatDate(assignment.dueDate)}",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF6B7280),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
             ),
-
-            // Bottom: title + date (styled section)
+            const SizedBox(width: 8),
+            // Right: Time Remaining Pill Badge + Arrow
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFF1F2),
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(19),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF1F2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFFEF4444),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    assignment.title,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF111827),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Due: ${HomeProvider.formatDate(assignment.dueDate)}',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF9CA3AF),
-                    ),
-                  ),
-                ],
-              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: Color(0xFF9CA3AF),
             ),
           ],
         ),
@@ -855,32 +876,113 @@ class _UpcomingCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF0EFFE),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              assignment.title,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF111827),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+          border: Border.all(
+            color: const Color(0xFFE5E7EB),
+          ), // Subtle gray border
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF6B7280),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Left: Calendar Icon Badge
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE0E7FF), // Soft indigo background
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: const Icon(
+                Icons.calendar_month_rounded,
+                color: Color(0xFF4F46E5),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            // Middle: Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: assignment.status == AssignmentStatus.ongoing
+                              ? const Color(0xFF3B82F6)
+                              : assignment.status == AssignmentStatus.completed
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFF59E0B),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          assignment.title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF111827),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  FutureBuilder(
+                    future: SubjectRepository.instance.getSubjectById(
+                      assignment.subjectId,
+                    ),
+                    builder: (context, snapshot) {
+                      final subjectName = snapshot.data?.name ?? '';
+                      return Text(
+                        "$subjectName • Due: ${HomeProvider.formatDate(assignment.dueDate)}",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF6B7280),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Right: Time Remaining Pill Badge + Arrow
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEEF2FF),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF4F46E5),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: Color(0xFF9CA3AF),
             ),
           ],
         ),

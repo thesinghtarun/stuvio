@@ -147,10 +147,14 @@ class _SplashScreenState extends State<SplashScreen>
           children: [
             const Spacer(),
 
+
+            // show the folder and file instead of this
             ScaleTransition(
               scale: _logoScale,
               child: Image.asset(splashLogo, width: 220),
             ),
+
+            //after finishing the animation show these buildanimated text
 
             const SizedBox(height: 20),
 
@@ -183,6 +187,8 @@ class _SplashScreenState extends State<SplashScreen>
             ),
 
             const Spacer(),
+
+            //remove this progress animation
 
             AnimatedBuilder(
               animation: _progressAnimation,
